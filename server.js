@@ -28,11 +28,15 @@ wss.on("connection", (ws) => {
     env: process.env,
   });
 
-  term.onData((d) => ws.readyState && ws.send(d));
+  term.onData((d) => ws.readyState === 1 && ws.send(d));
   ws.on("message", (m) => {
-    const msg = JSON.parse(m.toString());
-    if (msg.resize) term.resize(msg.resize.cols, msg.resize.rows);
-    else term.write(msg);
+    try {
+      const msg = JSON.parse(m.toString());
+      if (msg.resize) term.resize(msg.resize.cols, msg.resize.rows);
+    } catch {
+      term.write(m.toString());
+    }
   });
   ws.on("close", () => term.kill());
+  ws.on("error", () => term.kill());
 });
