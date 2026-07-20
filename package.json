@@ -1,0 +1,15 @@
+{
+  "name": "hermes-web-cli",
+  "version": "1.0.0",
+  "description": "Full-screen Hermes CLI in the browser",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0",
+    "node-pty": "^1.0.0"
+  }
+}
