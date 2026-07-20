@@ -4,28 +4,52 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hermes CLI</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/css/xterm.css">
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden}
   #t{position:fixed;inset:0}
 </style>
+<script type="importmap">
+{
+  "imports": {
+    "@xterm/xterm": "https://cdn.jsdelivr.net/npm/@xterm/xterm@6.0.0/+esm",
+    "@xterm/addon-fit": "https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.11.0/+esm",
+    "@xterm/addon-webgl": "https://cdn.jsdelivr.net/npm/@xterm/addon-webgl@0.19.0/+esm",
+    "@xterm/addon-web-links": "https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.12.0/+esm",
+    "@xterm/addon-unicode11": "https://cdn.jsdelivr.net/npm/@xterm/addon-unicode11@0.9.0/+esm"
+  }
+}
+</script>
 </head>
 <body>
 <div id="t"></div>
-<script>
+<script type="module">
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
+import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
+
 const term = new Terminal({
   fontSize: 14,
   fontFamily: "monospace",
   cursorBlink: true,
   allowProposedApi: true,
-  theme: { background: "#000000" }
 });
 
-const fit = new FitAddon.FitAddon();
+const fit = new FitAddon();
 term.loadAddon(fit);
+term.loadAddon(new WebLinksAddon());
+
+const unicode11 = new Unicode11Addon();
+term.loadAddon(unicode11);
+term.unicode.activeVersion = "11";
+
 term.open(document.getElementById("t"));
+
+// GPU-accelerated rendering (matches official Hermes dashboard)
+try { term.loadAddon(new WebglAddon()); } catch (e) { console.warn("WebGL unavailable:", e); }
+
 fit.fit();
 
 const ws = new WebSocket((location.protocol === "https:" ? "wss" : "ws") + "://" + location.host);
