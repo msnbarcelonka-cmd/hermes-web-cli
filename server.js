@@ -8,6 +8,8 @@ import { dirname, join } from "node:path";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const HERMES = process.env.HERMES_BIN || "hermes";
+// --tui gives the rich interactive interface (same as the official dashboard Chat tab)
+const HERMES_ARGS = process.env.HERMES_ARGS ? JSON.parse(process.env.HERMES_ARGS) : ["--tui"];
 
 const app = express();
 app.get("/", (_req, res) =>
@@ -21,11 +23,11 @@ const server = app.listen(PORT, () =>
 const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws) => {
-  const term = ptySpawn(HERMES, [], {
+  const term = ptySpawn(HERMES, HERMES_ARGS, {
     name: "xterm-256color",
     cols: 100,
     rows: 30,
-    env: process.env,
+    env: { ...process.env, TERM: "xterm-256color" },
   });
 
   term.onData((d) => ws.readyState === 1 && ws.send(d));

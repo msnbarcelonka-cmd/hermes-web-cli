@@ -4,33 +4,60 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hermes CLI</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
 <style>
-  html,body{margin:0;height:100%;background:#000}
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
   #t{position:fixed;inset:0}
 </style>
 </head>
 <body>
 <div id="t"></div>
 <script>
-const term = new Terminal({fontSize:14,fontFamily:"monospace",cursorBlink:true});
+const term = new Terminal({
+  fontSize: 14,
+  fontFamily: "monospace",
+  cursorBlink: true,
+  allowProposedApi: true,
+  theme: { background: "#000000" }
+});
+
 const fit = new FitAddon.FitAddon();
 term.loadAddon(fit);
+term.loadAddon(new WebLinksAddon.WebLinksAddon());
 term.open(document.getElementById("t"));
 fit.fit();
 
-const ws = new WebSocket((location.protocol==="https:"?"wss":"ws")+"://"+location.host);
-ws.onopen=()=>{
-  ws.send(JSON.stringify({resize:{cols:term.cols,rows:term.rows}}));
+const ws = new WebSocket((location.protocol === "https:" ? "wss" : "ws") + "://" + location.host);
+ws.binaryType = "arraybuffer";
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({ resize: { cols: term.cols, rows: term.rows } }));
   term.focus();
 };
-ws.onmessage=(e)=>term.write(e.data);
-ws.onclose=()=>term.write("\r\n\x1b[31m[disconnected]\x1b[0m");
 
-term.onData((d)=>ws.send(d));
-addEventListener("resize",()=>{fit.fit();ws.send(JSON.stringify({resize:{cols:term.cols,rows:term.rows}}));});
+ws.onmessage = (e) => {
+  const data = e.data instanceof ArrayBuffer
+    ? new TextDecoder().decode(e.data)
+    : e.data;
+  term.write(data);
+};
+
+ws.onclose = () => term.write("\r\n\x1b[31m[disconnected]\x1b[0m");
+ws.onerror = () => {};
+
+term.onData((d) => {
+  if (ws.readyState === 1) ws.send(d);
+});
+
+window.addEventListener("resize", () => {
+  fit.fit();
+  if (ws.readyState === 1) {
+    ws.send(JSON.stringify({ resize: { cols: term.cols, rows: term.rows } }));
+  }
+});
 </script>
 </body>
 </html>
