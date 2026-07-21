@@ -1,7 +1,18 @@
-import { useState, type FormEvent } from "react";
-import { FolderIcon, PlusIcon } from "lucide-react";
+import { useRef, useState, type FormEvent } from "react";
+import {
+  BoxesIcon,
+  ChevronRightIcon,
+  FolderIcon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +20,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,25 +37,111 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { addWorkspace } from "@/workspaces";
+
+const entityTypes = {
+  workspace: {
+    singular: "workspace",
+    label: "Workspace",
+    section: "Workspaces",
+    icon: FolderIcon,
+  },
+  swarm: {
+    singular: "swarm",
+    label: "Swarm",
+    section: "Swarms",
+    icon: BoxesIcon,
+  },
+} as const;
+
+type EntityType = keyof typeof entityTypes;
+type Entity = { id: number; name: string; type: EntityType };
+
+type SidebarSectionProps = {
+  type: EntityType;
+  items: Entity[];
+  onDelete: (id: number) => void;
+};
+
+function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
+  const config = entityTypes[type];
+  const Icon = config.icon;
+
+  return (
+    <Collapsible defaultOpen className="group/collapsible">
+      <SidebarGroup>
+        {items.length ? (
+          <CollapsibleTrigger asChild>
+            <button
+              aria-label={`Toggle ${config.section}`}
+              className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:hidden"
+            >
+              <span>{config.section}</span>
+              <ChevronRightIcon className="ml-auto size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+            </button>
+          </CollapsibleTrigger>
+        ) : (
+          <SidebarGroupLabel>{config.section}</SidebarGroupLabel>
+        )}
+
+        {items.length > 0 && (
+          <CollapsibleContent>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {items.map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton tooltip={item.name}>
+                      <Icon />
+                      <span>{item.name}</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuAction
+                      aria-label={`Delete ${item.name}`}
+                      onClick={() => onDelete(item.id)}
+                    >
+                      <XIcon />
+                    </SidebarMenuAction>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        )}
+      </SidebarGroup>
+    </Collapsible>
+  );
+}
 
 export function AppSidebar() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const nextId = useRef(0);
+  const [createType, setCreateType] = useState<EntityType | null>(null);
   const [name, setName] = useState("");
-  const [workspaces, setWorkspaces] = useState<string[]>([]);
+  const [entities, setEntities] = useState<Entity[]>([]);
 
-  const createWorkspace = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const nextWorkspaces = addWorkspace(workspaces, name);
-    if (nextWorkspaces === workspaces) return;
-    setWorkspaces(nextWorkspaces);
+  const closeDialog = () => {
+    setCreateType(null);
     setName("");
-    setDialogOpen(false);
   };
+
+  const createEntity = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedName = name.trim();
+    if (!createType || !trimmedName) return;
+
+    setEntities((current) => [
+      ...current,
+      { id: ++nextId.current, name: trimmedName, type: createType },
+    ]);
+    closeDialog();
+  };
+
+  const deleteEntity = (id: number) =>
+    setEntities((current) => current.filter((entity) => entity.id !== id));
+
+  const dialogConfig = createType ? entityTypes[createType] : null;
 
   return (
     <Sidebar collapsible="icon">
@@ -51,69 +153,76 @@ export function AppSidebar() {
           </span>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
               className="w-full justify-start group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
               size="sm"
             >
               <PlusIcon />
-              <span className="group-data-[collapsible=icon]:hidden">New workspace</span>
+              <span className="group-data-[collapsible=icon]:hidden">Create</span>
             </Button>
-          </DialogTrigger>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {(Object.keys(entityTypes) as EntityType[]).map((type) => {
+              const config = entityTypes[type];
+              const Icon = config.icon;
+              return (
+                <DropdownMenuItem key={type} onSelect={() => setCreateType(type)}>
+                  <Icon />
+                  {config.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarHeader>
+
+      <SidebarContent>
+        {(Object.keys(entityTypes) as EntityType[]).map((type) => (
+          <SidebarSection
+            key={type}
+            type={type}
+            items={entities.filter((entity) => entity.type === type)}
+            onDelete={deleteEntity}
+          />
+        ))}
+      </SidebarContent>
+
+      <Dialog
+        open={createType !== null}
+        onOpenChange={(open) => !open && closeDialog()}
+      >
+        {dialogConfig && (
           <DialogContent>
-            <form onSubmit={createWorkspace}>
+            <form onSubmit={createEntity}>
               <DialogHeader>
-                <DialogTitle>Create workspace</DialogTitle>
+                <DialogTitle>Create {dialogConfig.singular}</DialogTitle>
                 <DialogDescription>
-                  Choose a name for your new workspace.
+                  Choose a name for your new {dialogConfig.singular}.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-2 py-5">
-                <Label htmlFor="workspace-name">Name</Label>
+                <Label htmlFor="entity-name">Name</Label>
                 <Input
-                  id="workspace-name"
+                  id="entity-name"
                   autoFocus
                   autoComplete="off"
                   maxLength={64}
-                  placeholder="My workspace"
+                  placeholder={`My ${dialogConfig.singular}`}
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                 />
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={!name.trim()}>
-                  Create workspace
+                  Create {dialogConfig.singular}
                 </Button>
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Workspaces</SidebarGroupLabel>
-          <SidebarGroupContent>
-            {workspaces.length ? (
-              <SidebarMenu>
-                {workspaces.map((workspace, index) => (
-                  <SidebarMenuItem key={`${workspace}-${index}`}>
-                    <SidebarMenuButton tooltip={workspace}>
-                      <FolderIcon />
-                      <span>{workspace}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            ) : (
-              <p className="px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                No workspaces yet.
-              </p>
-            )}
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        )}
+      </Dialog>
     </Sidebar>
   );
 }
