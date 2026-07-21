@@ -12,7 +12,12 @@ describe("WorkspaceSetup", () => {
   it("shows every terminal layout with six selected", () => {
     render(<WorkspaceSetup />);
 
-    expect(screen.getByRole("heading", { name: "Set up your workspace" })).toBeTruthy();
+    const heading = screen.getByRole("heading", { name: "Set up your workspace" });
+    expect(heading).toBeTruthy();
+    const work = heading.querySelector('[data-work-highlight="true"]');
+    expect(work?.textContent).toBe("work");
+    expect(work?.className).toContain("font-minecraft");
+    expect(work?.className).toContain("animate-work-gradient");
     expect(screen.getByText("How many terminals?")).toBeTruthy();
 
     for (const count of [1, 2, 4, 6, 8, 10, 12]) {

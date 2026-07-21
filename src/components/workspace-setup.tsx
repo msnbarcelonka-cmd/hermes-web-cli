@@ -43,7 +43,14 @@ export function WorkspaceSetup() {
     >
       <main className="mx-auto min-h-full w-full max-w-5xl px-6 py-10 sm:px-10 sm:py-14 lg:px-14">
         <h1 className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
-          Set up your workspace
+          Set up your{" "}
+          <span
+            data-work-highlight="true"
+            className="animate-work-gradient font-minecraft"
+          >
+            work
+          </span>
+          space
         </h1>
 
         <section className="mt-10" aria-labelledby="terminal-count-heading">

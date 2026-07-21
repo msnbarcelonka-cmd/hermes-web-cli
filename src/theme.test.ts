@@ -11,4 +11,10 @@ describe("Mist theme", () => {
     expect(styles).toContain("--sidebar-primary-foreground: #0a0a0a;");
     expect(styles).toContain("--sidebar-ring: #5f93b8;");
   });
+
+  it("defines the work title slow-spin gradient", () => {
+    expect(styles).toContain("@property --work-gradient-angle");
+    expect(styles).toContain("animation: work-gradient-spin 8s linear infinite");
+    expect(styles).toContain("prefers-reduced-motion: reduce");
+  });
 });

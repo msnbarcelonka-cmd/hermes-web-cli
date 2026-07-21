@@ -11,6 +11,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@property --work-gradient-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 90deg;
+}
+
+@keyframes work-gradient-spin {
+  to {
+    --work-gradient-angle: 450deg;
+  }
+}
+
+.animate-work-gradient {
+  color: transparent;
+  background-image: conic-gradient(
+    from var(--work-gradient-angle),
+    var(--sidebar-foreground) 0%,
+    var(--sidebar-primary) 50%,
+    var(--sidebar-foreground) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: work-gradient-spin 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-work-gradient {
+    animation: none;
+  }
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-minecraft: "Minecraft", sans-serif;
