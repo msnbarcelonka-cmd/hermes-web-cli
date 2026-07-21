@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { FolderIcon, PlusIcon, SquareTerminalIcon } from "lucide-react";
+import { FolderIcon, PlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { addWorkspace } from "@/workspaces";
 
@@ -44,23 +44,19 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" tooltip="Hermes">
-              <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                <SquareTerminalIcon className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">Hermes</span>
-                <span className="truncate text-xs text-muted-foreground">Workspaces</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex h-8 items-center gap-2">
+          <SidebarTrigger className="size-8 shrink-0" />
+          <span className="font-minecraft truncate text-base leading-none group-data-[collapsible=icon]:hidden">
+            Mist
+          </span>
+        </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="w-full justify-start group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0" size="sm">
+            <Button
+              className="w-full justify-start group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+              size="sm"
+            >
               <PlusIcon />
               <span className="group-data-[collapsible=icon]:hidden">New workspace</span>
             </Button>
@@ -118,7 +114,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarRail />
     </Sidebar>
   );
 }
