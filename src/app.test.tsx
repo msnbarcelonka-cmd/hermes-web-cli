@@ -46,10 +46,12 @@ describe("App workspace setup flow", () => {
 
     const name = screen.getByLabelText("Workspace name");
     const create = screen.getByRole("button", { name: "Create workspace" });
-    expect(create.hasAttribute("disabled")).toBe(true);
+    expect(create.hasAttribute("disabled")).toBe(false);
+
+    await user.click(create);
+    expect(screen.queryByRole("button", { name: "Alpha" })).toBeNull();
 
     await user.type(name, "  Alpha  ");
-    expect(create.hasAttribute("disabled")).toBe(false);
     await user.click(create);
 
     expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();

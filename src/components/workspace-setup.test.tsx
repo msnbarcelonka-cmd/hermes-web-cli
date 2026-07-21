@@ -21,11 +21,13 @@ describe("WorkspaceSetup", () => {
     expect(workspace?.className).toContain("ml-");
 
     const name = screen.getByLabelText("Workspace name");
+    expect(name.hasAttribute("required")).toBe(true);
     const terminalHeading = screen.getByText("How many terminals?");
     expect(heading.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(name.compareDocumentPosition(terminalHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     const create = screen.getByRole("button", { name: "Create workspace" });
+    expect(create.hasAttribute("disabled")).toBe(false);
     expect(create.className).toContain("font-sans");
     expect(create.querySelector('[data-gradient="spin-slow"]')).toBeTruthy();
     const surface = create.querySelector('[data-button-surface="true"]');

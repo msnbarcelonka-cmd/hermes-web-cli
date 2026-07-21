@@ -74,6 +74,7 @@ export function WorkspaceSetup({
               autoFocus
               autoComplete="off"
               maxLength={64}
+              required
               placeholder="My workspace"
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -124,7 +125,6 @@ export function WorkspaceSetup({
           <div className="mt-10 flex justify-center">
             <AnimatedCreateButton
               type="submit"
-              disabled={!name.trim()}
               aria-label="Create workspace"
             >
               Create
