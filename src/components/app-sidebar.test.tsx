@@ -10,6 +10,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }));
 
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+vi.stubGlobal("ResizeObserver", ResizeObserverMock);
+
 function renderSidebar(defaultOpen = true) {
   return render(
     <TooltipProvider>
@@ -64,6 +72,11 @@ describe("AppSidebar", () => {
     expect(screen.queryByRole("button", { name: "Toggle Swarms" })).toBeNull();
 
     const user = await createItem("Workspace", "Alpha");
+    const submenu = document.querySelector('[data-sidebar="menu-sub"]');
+    expect(submenu).toBeTruthy();
+    expect(submenu?.className).toContain("border-l");
+    expect(screen.getByRole("button", { name: "Toggle Workspaces" }).closest('[data-sidebar="menu-item"]')).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Alpha" }).closest('[data-sidebar="menu-sub-item"]')).toBeTruthy();
     expect(screen.getByRole("button", { name: "Toggle Workspaces" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
 

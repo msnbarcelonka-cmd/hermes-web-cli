@@ -33,13 +33,15 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
-  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 
@@ -71,47 +73,53 @@ function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
   const config = entityTypes[type];
   const Icon = config.icon;
 
-  return (
-    <Collapsible defaultOpen className="group/collapsible">
+  if (!items.length) {
+    return (
       <SidebarGroup>
-        {items.length ? (
-          <CollapsibleTrigger asChild>
-            <button
-              aria-label={`Toggle ${config.section}`}
-              className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:hidden"
-            >
-              <span>{config.section}</span>
-              <ChevronRightIcon className="ml-auto size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
-            </button>
-          </CollapsibleTrigger>
-        ) : (
-          <SidebarGroupLabel>{config.section}</SidebarGroupLabel>
-        )}
+        <SidebarGroupLabel>{config.section}</SidebarGroupLabel>
+      </SidebarGroup>
+    );
+  }
 
-        {items.length > 0 && (
-          <CollapsibleContent>
-            <SidebarGroupContent>
-              <SidebarMenu>
+  return (
+    <SidebarGroup>
+      <SidebarMenu>
+        <Collapsible asChild defaultOpen className="group/collapsible">
+          <SidebarMenuItem>
+            <CollapsibleTrigger asChild>
+              <SidebarMenuButton
+                aria-label={`Toggle ${config.section}`}
+                tooltip={config.section}
+              >
+                <Icon />
+                <span>{config.section}</span>
+                <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              </SidebarMenuButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarMenuSub>
                 {items.map((item) => (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton tooltip={item.name}>
-                      <Icon />
-                      <span>{item.name}</span>
-                    </SidebarMenuButton>
+                  <SidebarMenuSubItem key={item.id}>
+                    <SidebarMenuSubButton asChild>
+                      <button type="button">
+                        <span>{item.name}</span>
+                      </button>
+                    </SidebarMenuSubButton>
                     <SidebarMenuAction
                       aria-label={`Delete ${item.name}`}
+                      className="top-1"
                       onClick={() => onDelete(item.id)}
                     >
                       <XIcon />
                     </SidebarMenuAction>
-                  </SidebarMenuItem>
+                  </SidebarMenuSubItem>
                 ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </CollapsibleContent>
-        )}
-      </SidebarGroup>
-    </Collapsible>
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </SidebarMenuItem>
+        </Collapsible>
+      </SidebarMenu>
+    </SidebarGroup>
   );
 }
 
