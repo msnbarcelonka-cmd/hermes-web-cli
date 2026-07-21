@@ -201,7 +201,12 @@ ws.onclose = () =>
   term.write("\r\n\x1b[31m[disconnected]\x1b[0m");
 ws.onerror = () => {};
 
+// SGR mouse reports must never reach the PTY — they're terminal control traffic,
+// not user input. Matches the official dashboard ChatPage.tsx filter (line 1101).
+const SGR_MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/;
+
 term.onData((d) => {
+  if (SGR_MOUSE_RE.test(d)) return; // swallow mouse reports
   if (ws.readyState === WebSocket.OPEN) ws.send(d);
 });
 

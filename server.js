@@ -23,11 +23,26 @@ const wss = new WebSocketServer({ server });
 const RESIZE_RE = /^\x1b\[RESIZE:(\d+);(\d+)\]$/;
 
 wss.on("connection", (ws) => {
+  // Env vars that match the official dashboard's PTY spawn (web_server.py:16676-16689).
+  // HERMES_TUI_DISABLE_MOUSE: disables SGR mouse tracking so xterm.js does native
+  //   browser-side selection (GPU-accelerated, correct selectionBackground color).
+  // HERMES_TUI_INLINE: inline transcript mode for browser embedding.
+  // COLORTERM: forces chalk to emit 24-bit RGB instead of downgrading to xterm 256 palette.
+  // HERMES_TUI_DASHBOARD: marks the TUI as dashboard-embedded.
+  const env = {
+    ...process.env,
+    TERM: "xterm-256color",
+    HERMES_TUI_DISABLE_MOUSE: "1",
+    HERMES_TUI_INLINE: "1",
+    COLORTERM: "truecolor",
+    HERMES_TUI_DASHBOARD: "1",
+  };
+
   const term = ptySpawn(HERMES, HERMES_ARGS, {
     name: "xterm-256color",
     cols: 100,
     rows: 30,
-    env: { ...process.env, TERM: "xterm-256color" },
+    env,
   });
 
   term.onData((d) => ws.readyState === 1 && ws.send(d));

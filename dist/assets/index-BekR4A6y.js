@@ -12577,7 +12577,9 @@ ws.onmessage = (ev) => {
 ws.onclose = () => term.write("\r\n\x1B[31m[disconnected]\x1B[0m");
 ws.onerror = () => {
 };
+const SGR_MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/;
 term.onData((d) => {
+  if (SGR_MOUSE_RE.test(d)) return;
   if (ws.readyState === WebSocket.OPEN) ws.send(d);
 });
 term.onResize(() => {
