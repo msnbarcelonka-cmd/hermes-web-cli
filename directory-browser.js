@@ -1,4 +1,4 @@
-import { readdir, realpath, stat } from "node:fs/promises";
+import { mkdir, readdir, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 const collator = new Intl.Collator(undefined, {
@@ -47,4 +47,22 @@ export async function listDirectories(requestedPath, browseRoot = "/root") {
     parent: isWithin(root, parentCandidate) ? parentCandidate : root,
     directories,
   };
+}
+
+export async function createDirectory(parentPath, name, browseRoot = "/root") {
+  const trimmedName = name.trim();
+  if (
+    !trimmedName ||
+    trimmedName.length > 64 ||
+    trimmedName.startsWith(".") ||
+    trimmedName === ".." ||
+    /[/\\\0]/.test(trimmedName)
+  ) {
+    throw new TypeError("Folder name is invalid");
+  }
+
+  const parent = await listDirectories(parentPath, browseRoot);
+  const createdPath = join(parent.current, trimmedName);
+  await mkdir(createdPath);
+  return createdPath;
 }

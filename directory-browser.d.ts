@@ -10,6 +10,12 @@ export type DirectoryListing = {
   directories: DirectoryEntry[];
 };
 
+export function createDirectory(
+  parentPath: string,
+  name: string,
+  browseRoot?: string,
+): Promise<string>;
+
 export function listDirectories(
   requestedPath: string,
   browseRoot?: string,

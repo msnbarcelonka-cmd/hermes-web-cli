@@ -3,7 +3,7 @@ import { WebSocketServer } from "ws";
 import { spawn as ptySpawn } from "node-pty";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { listDirectories } from "./directory-browser.js";
+import { createDirectory, listDirectories } from "./directory-browser.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -12,6 +12,7 @@ const HERMES_ARGS = process.env.HERMES_ARGS ? JSON.parse(process.env.HERMES_ARGS
 const MIST_BROWSE_ROOT = process.env.MIST_BROWSE_ROOT || "/root";
 
 const app = express();
+app.use(express.json({ limit: "4kb" }));
 
 app.get("/api/directories", async (req, res) => {
   if (typeof req.query.path !== "string") {
@@ -39,6 +40,39 @@ app.get("/api/directories", async (req, res) => {
 
     console.error("Directory browser error:", error);
     res.status(500).json({ error: "Unable to read directory" });
+  }
+});
+
+app.post("/api/directories", async (req, res) => {
+  const { parent, name } = req.body ?? {};
+  if (typeof parent !== "string" || typeof name !== "string") {
+    res.status(400).json({ error: "Parent path and folder name are required" });
+    return;
+  }
+
+  try {
+    const path = await createDirectory(parent, name, MIST_BROWSE_ROOT);
+    res.status(201).json({ path });
+  } catch (error) {
+    if (error instanceof RangeError) {
+      res.status(403).json({ error: error.message });
+      return;
+    }
+    if (error?.code === "ENOENT") {
+      res.status(404).json({ error: "Parent directory not found" });
+      return;
+    }
+    if (error?.code === "EEXIST") {
+      res.status(409).json({ error: "A folder with this name already exists" });
+      return;
+    }
+    if (error instanceof TypeError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    console.error("Directory creation error:", error);
+    res.status(500).json({ error: "Unable to create directory" });
   }
 });
 
