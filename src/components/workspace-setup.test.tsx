@@ -14,10 +14,20 @@ describe("WorkspaceSetup", () => {
 
     const heading = screen.getByRole("heading", { name: "Set up your workspace" });
     expect(heading).toBeTruthy();
-    const work = heading.querySelector('[data-work-highlight="true"]');
-    expect(work?.textContent).toBe("work");
-    expect(work?.className).toContain("font-minecraft");
-    expect(work?.className).toContain("animate-work-gradient");
+    const workspace = heading.querySelector('[data-workspace-highlight="true"]');
+    expect(workspace?.textContent).toBe("workspace");
+    expect(workspace?.className).toContain("font-minecraft");
+    expect(workspace?.className).toContain("animate-work-gradient");
+    expect(workspace?.className).toContain("ml-");
+
+    const name = screen.getByLabelText("Workspace name");
+    const terminalHeading = screen.getByText("How many terminals?");
+    expect(heading.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(name.compareDocumentPosition(terminalHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const create = screen.getByRole("button", { name: "Create workspace" });
+    expect(create.className).toContain("font-sans");
+    expect(create.querySelector('[data-gradient="spin-slow"]')).toBeTruthy();
     expect(screen.getByText("How many terminals?")).toBeTruthy();
 
     for (const count of [1, 2, 4, 6, 8, 10, 12]) {

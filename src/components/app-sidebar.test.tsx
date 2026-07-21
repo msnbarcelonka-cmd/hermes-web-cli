@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 
+import { useRef, useState } from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { AppSidebar } from "@/components/app-sidebar";
+import {
+  AppSidebar,
+  type Entity,
+  type EntityType,
+} from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -18,11 +23,36 @@ class ResizeObserverMock {
 
 vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 
+let requestedWorkspaceName = "Workspace";
+
+function SidebarHarness() {
+  const nextId = useRef(0);
+  const [entities, setEntities] = useState<Entity[]>([]);
+
+  const createEntity = (name: string, type: EntityType) => {
+    setEntities((current) => [
+      ...current,
+      { id: ++nextId.current, name, type },
+    ]);
+  };
+
+  return (
+    <AppSidebar
+      entities={entities}
+      onWorkspaceSetup={() => createEntity(requestedWorkspaceName, "workspace")}
+      onCreateEntity={createEntity}
+      onDeleteEntity={(id) =>
+        setEntities((current) => current.filter((entity) => entity.id !== id))
+      }
+    />
+  );
+}
+
 function renderSidebar(defaultOpen = true) {
   return render(
     <TooltipProvider>
       <SidebarProvider defaultOpen={defaultOpen}>
-        <AppSidebar />
+        <SidebarHarness />
       </SidebarProvider>
     </TooltipProvider>,
   );
@@ -30,10 +60,15 @@ function renderSidebar(defaultOpen = true) {
 
 async function createItem(type: "Workspace" | "Swarm", name: string) {
   const user = userEvent.setup();
+  requestedWorkspaceName = name;
   await user.click(screen.getByRole("button", { name: "Create" }));
   await user.click(screen.getByRole("menuitem", { name: type }));
-  await user.type(screen.getByLabelText("Name"), name);
-  await user.click(screen.getByRole("button", { name: `Create ${type.toLowerCase()}` }));
+
+  if (type === "Swarm") {
+    await user.type(screen.getByLabelText("Name"), name);
+    await user.click(screen.getByRole("button", { name: "Create swarm" }));
+  }
+
   return user;
 }
 

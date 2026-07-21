@@ -20,24 +20,38 @@ class ResizeObserverMock {
 
 vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 
+function renderApp() {
+  return render(
+    <TooltipProvider>
+      <App />
+    </TooltipProvider>,
+  );
+}
+
 describe("App workspace setup flow", () => {
   afterEach(cleanup);
 
-  it("replaces the terminal after creating a workspace", async () => {
+  it("moves workspace creation into the setup screen", async () => {
     const user = userEvent.setup();
-    render(
-      <TooltipProvider>
-        <App />
-      </TooltipProvider>,
-    );
+    renderApp();
 
     expect(await screen.findByTestId("terminal")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Create" }));
     await user.click(screen.getByRole("menuitem", { name: "Workspace" }));
-    await user.type(screen.getByLabelText("Name"), "Alpha");
-    await user.click(screen.getByRole("button", { name: "Create workspace" }));
 
     expect(await screen.findByRole("heading", { name: "Set up your workspace" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByTestId("terminal")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Alpha" })).toBeNull();
+
+    const name = screen.getByLabelText("Workspace name");
+    const create = screen.getByRole("button", { name: "Create workspace" });
+    expect(create.hasAttribute("disabled")).toBe(true);
+
+    await user.type(name, "  Alpha  ");
+    expect(create.hasAttribute("disabled")).toBe(false);
+    await user.click(create);
+
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
   });
 });

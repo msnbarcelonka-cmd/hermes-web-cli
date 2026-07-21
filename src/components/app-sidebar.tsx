@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   BoxesIcon,
   ChevronRightIcon,
@@ -59,8 +59,8 @@ const entityTypes = {
   },
 } as const;
 
-type EntityType = keyof typeof entityTypes;
-type Entity = { id: number; name: string; type: EntityType };
+export type EntityType = keyof typeof entityTypes;
+export type Entity = { id: number; name: string; type: EntityType };
 
 type SidebarSectionProps = {
   type: EntityType;
@@ -128,14 +128,18 @@ function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
 }
 
 export function AppSidebar({
-  onWorkspaceCreated,
+  entities,
+  onWorkspaceSetup,
+  onCreateEntity,
+  onDeleteEntity,
 }: {
-  onWorkspaceCreated?: () => void;
+  entities: Entity[];
+  onWorkspaceSetup: () => void;
+  onCreateEntity: (name: string, type: EntityType) => void;
+  onDeleteEntity: (id: number) => void;
 }) {
-  const nextId = useRef(0);
   const [createType, setCreateType] = useState<EntityType | null>(null);
   const [name, setName] = useState("");
-  const [entities, setEntities] = useState<Entity[]>([]);
 
   const closeDialog = () => {
     setCreateType(null);
@@ -147,16 +151,9 @@ export function AppSidebar({
     const trimmedName = name.trim();
     if (!createType || !trimmedName) return;
 
-    setEntities((current) => [
-      ...current,
-      { id: ++nextId.current, name: trimmedName, type: createType },
-    ]);
-    if (createType === "workspace") onWorkspaceCreated?.();
+    onCreateEntity(trimmedName, createType);
     closeDialog();
   };
-
-  const deleteEntity = (id: number) =>
-    setEntities((current) => current.filter((entity) => entity.id !== id));
 
   const dialogConfig = createType ? entityTypes[createType] : null;
 
@@ -185,7 +182,13 @@ export function AppSidebar({
               const config = entityTypes[type];
               const Icon = config.icon;
               return (
-                <DropdownMenuItem key={type} onSelect={() => setCreateType(type)}>
+                <DropdownMenuItem
+                  key={type}
+                  onSelect={() => {
+                    if (type === "workspace") onWorkspaceSetup();
+                    else setCreateType(type);
+                  }}
+                >
                   <Icon />
                   {config.label}
                 </DropdownMenuItem>
@@ -201,7 +204,7 @@ export function AppSidebar({
             key={type}
             type={type}
             items={entities.filter((entity) => entity.type === type)}
-            onDelete={deleteEntity}
+            onDelete={onDeleteEntity}
           />
         ))}
       </SidebarContent>
