@@ -65,23 +65,41 @@ describe("AppSidebar", () => {
     expect(createButton.className).toContain("group-data-[collapsible=icon]:justify-center");
   });
 
-  it("shows section toggles only after items exist and collapses their lists", async () => {
+  it("keeps section rows stable while their submenus appear", async () => {
     renderSidebar();
 
-    expect(screen.queryByRole("button", { name: "Toggle Workspaces" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Toggle Swarms" })).toBeNull();
+    const workspaces = screen.getByRole("button", { name: "Workspaces" });
+    const swarms = screen.getByRole("button", { name: "Swarms" });
+    expect(workspaces.closest('[data-sidebar="menu-item"]')).toBeTruthy();
+    expect(swarms.closest('[data-sidebar="menu-item"]')).toBeTruthy();
+    expect(workspaces.querySelector(".lucide-chevron-right")).toBeNull();
+    expect(swarms.querySelector(".lucide-chevron-right")).toBeNull();
 
     const user = await createItem("Workspace", "Alpha");
+    const workspaceToggle = screen.getByRole("button", { name: "Toggle Workspaces" });
     const submenu = document.querySelector('[data-sidebar="menu-sub"]');
+    expect(workspaceToggle).toBe(workspaces);
+    expect(workspaceToggle.querySelector(".lucide-chevron-right")).toBeTruthy();
     expect(submenu).toBeTruthy();
     expect(submenu?.className).toContain("border-l");
-    expect(screen.getByRole("button", { name: "Toggle Workspaces" }).closest('[data-sidebar="menu-item"]')).toBeTruthy();
     expect(screen.getByRole("button", { name: "Alpha" }).closest('[data-sidebar="menu-sub-item"]')).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Toggle Workspaces" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
 
-    await user.click(screen.getByRole("button", { name: "Toggle Workspaces" }));
+    await user.click(workspaceToggle);
     expect(screen.queryByRole("button", { name: "Alpha" })).toBeNull();
+  });
+
+  it("keeps submenu lines and initial buttons in collapsed mode", async () => {
+    const user = userEvent.setup();
+    renderSidebar();
+    await createItem("Workspace", "Alpha");
+    await user.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+
+    const submenu = document.querySelector('[data-sidebar="menu-sub"]');
+    const item = screen.getByRole("button", { name: "Alpha" });
+    expect(submenu?.className).toContain("group-data-[collapsible=icon]:flex!");
+    expect(item.className).toContain("group-data-[collapsible=icon]:flex!");
+    expect(item.className).toContain("group-data-[collapsible=icon]:size-8");
+    expect(screen.getByText("A")).toBeTruthy();
   });
 
   it("creates and deletes workspaces", async () => {
@@ -90,7 +108,8 @@ describe("AppSidebar", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Alpha" }));
     expect(screen.queryByRole("button", { name: "Alpha" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Toggle Workspaces" })).toBeNull();
+    const workspaces = screen.getByRole("button", { name: "Workspaces" });
+    expect(workspaces.querySelector(".lucide-chevron-right")).toBeNull();
   });
 
   it("deletes only the selected item when names are duplicated", async () => {
@@ -113,6 +132,7 @@ describe("AppSidebar", () => {
 
     await user.click(screen.getByRole("button", { name: "Delete Builders" }));
     expect(screen.queryByRole("button", { name: "Builders" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Toggle Swarms" })).toBeNull();
+    const swarms = screen.getByRole("button", { name: "Swarms" });
+    expect(swarms.querySelector(".lucide-chevron-right")).toBeNull();
   });
 });

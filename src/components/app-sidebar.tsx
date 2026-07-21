@@ -33,7 +33,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
@@ -72,14 +71,7 @@ type SidebarSectionProps = {
 function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
   const config = entityTypes[type];
   const Icon = config.icon;
-
-  if (!items.length) {
-    return (
-      <SidebarGroup>
-        <SidebarGroupLabel>{config.section}</SidebarGroupLabel>
-      </SidebarGroup>
-    );
-  }
+  const hasItems = items.length > 0;
 
   return (
     <SidebarGroup>
@@ -88,34 +80,46 @@ function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
-                aria-label={`Toggle ${config.section}`}
+                aria-label={hasItems ? `Toggle ${config.section}` : config.section}
                 tooltip={config.section}
               >
                 <Icon />
                 <span>{config.section}</span>
-                <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                {hasItems && (
+                  <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                )}
               </SidebarMenuButton>
             </CollapsibleTrigger>
-            <CollapsibleContent>
-              <SidebarMenuSub>
-                {items.map((item) => (
-                  <SidebarMenuSubItem key={item.id}>
-                    <SidebarMenuSubButton asChild>
-                      <button type="button">
-                        <span>{item.name}</span>
-                      </button>
-                    </SidebarMenuSubButton>
-                    <SidebarMenuAction
-                      aria-label={`Delete ${item.name}`}
-                      className="top-1"
-                      onClick={() => onDelete(item.id)}
-                    >
-                      <XIcon />
-                    </SidebarMenuAction>
-                  </SidebarMenuSubItem>
-                ))}
-              </SidebarMenuSub>
-            </CollapsibleContent>
+            {hasItems && (
+              <CollapsibleContent>
+                <SidebarMenuSub className="group-data-[collapsible=icon]:mx-0! group-data-[collapsible=icon]:flex! group-data-[collapsible=icon]:translate-x-0 group-data-[collapsible=icon]:px-0!">
+                  {items.map((item) => (
+                    <SidebarMenuSubItem key={item.id}>
+                      <SidebarMenuSubButton
+                        asChild
+                        className="group-data-[collapsible=icon]:flex! group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:translate-x-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+                      >
+                        <button type="button" aria-label={item.name}>
+                          <span className="group-data-[collapsible=icon]:hidden">
+                            {item.name}
+                          </span>
+                          <span className="hidden uppercase group-data-[collapsible=icon]:inline">
+                            {item.name.charAt(0)}
+                          </span>
+                        </button>
+                      </SidebarMenuSubButton>
+                      <SidebarMenuAction
+                        aria-label={`Delete ${item.name}`}
+                        className="top-1"
+                        onClick={() => onDelete(item.id)}
+                      >
+                        <XIcon />
+                      </SidebarMenuAction>
+                    </SidebarMenuSubItem>
+                  ))}
+                </SidebarMenuSub>
+              </CollapsibleContent>
+            )}
           </SidebarMenuItem>
         </Collapsible>
       </SidebarMenu>
