@@ -60,7 +60,13 @@ const entityTypes = {
 } as const;
 
 export type EntityType = keyof typeof entityTypes;
-export type Entity = { id: number; name: string; type: EntityType };
+export type Entity = {
+  id: number;
+  name: string;
+  type: EntityType;
+  projectPath?: string;
+  terminalCount?: number;
+};
 
 type SidebarSectionProps = {
   type: EntityType;

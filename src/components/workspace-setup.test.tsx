@@ -2,7 +2,7 @@
 
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { WorkspaceSetup } from "@/components/workspace-setup";
 
@@ -50,16 +50,22 @@ describe("WorkspaceSetup", () => {
     expect(texture.style.opacity).toBe("0.1");
   });
 
-  it("changes the selected terminal layout", async () => {
+  it("submits the selected project path with the workspace", async () => {
     const user = userEvent.setup();
-    render(<WorkspaceSetup />);
+    const onCreate = vi.fn();
+    render(<WorkspaceSetup onCreate={onCreate} />);
 
-    const six = screen.getByRole("radio", { name: "6 terminals" });
-    const ten = screen.getByRole("radio", { name: "10 terminals" });
-    await user.click(ten);
+    await user.type(screen.getByLabelText("Workspace name"), "My Cool Project");
+    const location = screen.getByLabelText("Project location") as HTMLInputElement;
+    expect(location.value).toBe("/root");
 
-    expect(six.getAttribute("aria-checked")).toBe("false");
-    expect(ten.getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByText("5×2 grid")).toBeTruthy();
+    await user.click(screen.getByRole("radio", { name: "10 terminals" }));
+    await user.click(screen.getByRole("button", { name: "Create workspace" }));
+
+    expect(onCreate).toHaveBeenCalledWith(
+      "My Cool Project",
+      10,
+      "/root",
+    );
   });
 });

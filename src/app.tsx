@@ -13,10 +13,14 @@ export function App() {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [workspaceSetupOpen, setWorkspaceSetupOpen] = useState(false);
 
-  const createEntity = (name: string, type: EntityType) => {
+  const createEntity = (
+    name: string,
+    type: EntityType,
+    details: Pick<Entity, "projectPath" | "terminalCount"> = {},
+  ) => {
     setEntities((current) => [
       ...current,
-      { id: ++nextId.current, name, type },
+      { id: ++nextId.current, name, type, ...details },
     ]);
   };
 
@@ -37,7 +41,12 @@ export function App() {
         <div className="relative min-h-0 flex-1">
           {workspaceSetupOpen ? (
             <WorkspaceSetup
-              onCreate={(name) => createEntity(name, "workspace")}
+              onCreate={(name, terminalCount, projectPath) =>
+                createEntity(name, "workspace", {
+                  projectPath,
+                  terminalCount,
+                })
+              }
             />
           ) : (
             <Suspense fallback={null}>

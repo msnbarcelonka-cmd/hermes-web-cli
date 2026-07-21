@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 
+import { DirectoryPicker } from "@/components/directory-picker";
 import { AnimatedCreateButton } from "@/components/ui/animated-create-button";
 import { BackgroundImageTexture } from "@/components/ui/background-image-texture";
 import { Input } from "@/components/ui/input";
@@ -38,16 +39,24 @@ function LayoutIcon({ columns, count }: { columns: number; count: number }) {
 export function WorkspaceSetup({
   onCreate,
 }: {
-  onCreate?: (name: string, terminalCount: LayoutCount) => void;
+  onCreate?: (
+    name: string,
+    terminalCount: LayoutCount,
+    projectPath: string,
+  ) => void;
 }) {
   const [name, setName] = useState("");
+  const [projectPath, setProjectPath] = useState("/root");
   const [selectedCount, setSelectedCount] = useState<LayoutCount>(6);
   const selected = layouts.find((layout) => layout.count === selectedCount)!;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = name.trim();
-    if (trimmedName) onCreate?.(trimmedName, selectedCount);
+    const trimmedPath = projectPath.trim();
+    if (trimmedName && trimmedPath.startsWith("/")) {
+      onCreate?.(trimmedName, selectedCount, trimmedPath);
+    }
   };
 
   return (
@@ -79,6 +88,17 @@ export function WorkspaceSetup({
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
+
+            <div className="mt-4 grid gap-2">
+              <Label htmlFor="project-location">Project location</Label>
+              <DirectoryPicker
+                value={projectPath}
+                onChange={setProjectPath}
+              />
+              <p className="text-xs text-muted-foreground">
+                Choose an existing server folder for this workspace.
+              </p>
+            </div>
           </div>
 
           <section className="mt-10" aria-labelledby="terminal-count-heading">

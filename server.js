@@ -3,13 +3,44 @@ import { WebSocketServer } from "ws";
 import { spawn as ptySpawn } from "node-pty";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { listDirectories } from "./directory-browser.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const HERMES = process.env.HERMES_BIN || "hermes";
 const HERMES_ARGS = process.env.HERMES_ARGS ? JSON.parse(process.env.HERMES_ARGS) : ["--tui"];
+const MIST_BROWSE_ROOT = process.env.MIST_BROWSE_ROOT || "/root";
 
 const app = express();
+
+app.get("/api/directories", async (req, res) => {
+  if (typeof req.query.path !== "string") {
+    res.status(400).json({ error: "An absolute directory path is required" });
+    return;
+  }
+
+  try {
+    res.json(await listDirectories(req.query.path, MIST_BROWSE_ROOT));
+  } catch (error) {
+    if (error instanceof RangeError) {
+      res.status(403).json({ error: error.message });
+      return;
+    }
+
+    if (error?.code === "ENOENT") {
+      res.status(404).json({ error: "Directory not found" });
+      return;
+    }
+
+    if (error instanceof TypeError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    console.error("Directory browser error:", error);
+    res.status(500).json({ error: "Unable to read directory" });
+  }
+});
 
 // Serve built assets from dist/ (Vite output)
 app.use(express.static(join(__dirname, "dist")));
