@@ -28,6 +28,10 @@ describe("WorkspaceSetup", () => {
     const create = screen.getByRole("button", { name: "Create workspace" });
     expect(create.className).toContain("font-sans");
     expect(create.querySelector('[data-gradient="spin-slow"]')).toBeTruthy();
+    const surface = create.querySelector('[data-button-surface="true"]');
+    expect(surface).toBeTruthy();
+    expect(surface?.className).not.toContain("bg-sidebar");
+    expect(surface?.className).toContain("text-sidebar-primary-foreground");
     expect(screen.getByText("How many terminals?")).toBeTruthy();
 
     for (const count of [1, 2, 4, 6, 8, 10, 12]) {

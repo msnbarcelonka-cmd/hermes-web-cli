@@ -19,7 +19,10 @@ export const AnimatedCreateButton = forwardRef<
       data-gradient="spin-slow"
       className="absolute inset-[-1000%] m-auto block animate-[spin_8s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,var(--sidebar-foreground)_0%,var(--sidebar-primary)_50%,var(--sidebar-foreground)_100%)] motion-reduce:animate-none"
     />
-    <span className="relative flex h-9 items-center justify-center rounded-[calc(var(--radius-lg)-1px)] bg-sidebar px-6 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent">
+    <span
+      data-button-surface="true"
+      className="relative flex h-9 items-center justify-center rounded-[calc(var(--radius-lg)-1px)] px-6 text-sm font-medium text-sidebar-primary-foreground"
+    >
       {children}
     </span>
   </button>
