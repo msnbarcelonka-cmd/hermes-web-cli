@@ -21,6 +21,12 @@ describe("WorkspaceSetup", () => {
 
     expect(screen.getByRole("radio", { name: "6 terminals" }).getAttribute("aria-checked")).toBe("true");
     expect(screen.getByText("3×2 grid")).toBeTruthy();
+
+    const texture = document.querySelector('[data-texture="groovepaper"]') as HTMLElement;
+    expect(texture).toBeTruthy();
+    expect(texture.getAttribute("aria-hidden")).toBe("true");
+    expect(texture.className).toContain("pointer-events-none");
+    expect(texture.style.opacity).toBe("0.1");
   });
 
   it("changes the selected terminal layout", async () => {
