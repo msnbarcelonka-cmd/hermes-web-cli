@@ -127,7 +127,11 @@ function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({
+  onWorkspaceCreated,
+}: {
+  onWorkspaceCreated?: () => void;
+}) {
   const nextId = useRef(0);
   const [createType, setCreateType] = useState<EntityType | null>(null);
   const [name, setName] = useState("");
@@ -147,6 +151,7 @@ export function AppSidebar() {
       ...current,
       { id: ++nextId.current, name: trimmedName, type: createType },
     ]);
+    if (createType === "workspace") onWorkspaceCreated?.();
     closeDialog();
   };
 

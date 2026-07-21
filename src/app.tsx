@@ -1,6 +1,7 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
+import { WorkspaceSetup } from "@/components/workspace-setup";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 const Terminal = lazy(() =>
@@ -8,15 +9,21 @@ const Terminal = lazy(() =>
 );
 
 export function App() {
+  const [workspaceSetupOpen, setWorkspaceSetupOpen] = useState(false);
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar onWorkspaceCreated={() => setWorkspaceSetupOpen(true)} />
       <SidebarInset className="min-h-0 overflow-hidden bg-black">
         <SidebarTrigger className="absolute top-2 left-2 z-20 bg-background/80 shadow-sm backdrop-blur-sm md:hidden" />
         <div className="relative min-h-0 flex-1">
-          <Suspense fallback={null}>
-            <Terminal />
-          </Suspense>
+          {workspaceSetupOpen ? (
+            <WorkspaceSetup />
+          ) : (
+            <Suspense fallback={null}>
+              <Terminal />
+            </Suspense>
+          )}
         </div>
       </SidebarInset>
     </SidebarProvider>
