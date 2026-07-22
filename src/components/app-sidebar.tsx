@@ -186,10 +186,6 @@ export function AppSidebar({
           <SidebarTrigger className="size-8 shrink-0" />
           <span className="font-minecraft flex items-center gap-1.5 truncate text-base leading-none tracking-wide group-data-[collapsible=icon]:hidden">
             Mist
-            <span
-              aria-hidden="true"
-              className="animate-cursor-blink inline-block h-3.5 w-[7px] bg-sidebar-primary"
-            />
           </span>
         </div>
 

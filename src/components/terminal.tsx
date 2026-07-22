@@ -18,6 +18,7 @@ export function Terminal({ onReady }: { onReady?: () => void }) {
 
     let ready = false;
     let readyDelay: ReturnType<typeof setTimeout> | undefined;
+    let readyFallback: ReturnType<typeof setTimeout> | undefined;
     const term = new XTerm({
       allowProposedApi: true,
       cursorBlink: true,
@@ -166,16 +167,32 @@ export function Terminal({ onReady }: { onReady?: () => void }) {
     socket.onopen = () => {
       requestAnimationFrame(() => requestAnimationFrame(fitTerminal));
       term.focus();
-    };
-    socket.onmessage = ({ data }) => {
-      term.write(typeof data === "string" ? data : new Uint8Array(data));
-      clearTimeout(readyDelay);
-      readyDelay = setTimeout(() => {
+      readyFallback = setTimeout(() => {
         if (!ready) {
           ready = true;
           requestAnimationFrame(() => onReady?.());
         }
-      }, 300);
+      }, 30000);
+    };
+    socket.onmessage = ({ data }) => {
+      term.write(typeof data === "string" ? data : new Uint8Array(data));
+
+      if (!ready) {
+        clearTimeout(readyDelay);
+        readyDelay = setTimeout(() => {
+          const buf = term.buffer.active;
+          for (let i = 0; i < buf.length; i++) {
+            const line = buf.getLine(i);
+            if (line && /ready/.test(line.translateToString(true))) {
+              if (!ready) {
+                ready = true;
+                requestAnimationFrame(() => onReady?.());
+              }
+              return;
+            }
+          }
+        }, 200);
+      }
     };
     socket.onclose = () => term.write("\r\n\x1b[31m[disconnected]\x1b[0m");
 
@@ -186,6 +203,7 @@ export function Terminal({ onReady }: { onReady?: () => void }) {
       cancelAnimationFrame(frame);
       clearTimeout(debounce);
       clearTimeout(readyDelay);
+      clearTimeout(readyFallback);
       dataDisposable.dispose();
       resizeDisposable.dispose();
       socket.close();
