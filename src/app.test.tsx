@@ -9,7 +9,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }));
 vi.mock("@/components/terminal", () => ({
-  Terminal: () => <div data-testid="terminal">Terminal</div>,
+  Terminal: ({ onReady }: { onReady?: () => void }) => (
+    <div data-testid="terminal">
+      Terminal
+      <button type="button" onClick={onReady}>Signal terminal ready</button>
+    </div>
+  ),
 }));
 
 class ResizeObserverMock {
@@ -55,5 +60,17 @@ describe("App workspace setup flow", () => {
     await user.click(create);
 
     expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+  });
+
+  it("covers the terminal until Hermes has rendered its initial output", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    expect(await screen.findByTestId("connecting-panel")).toBeTruthy();
+    expect(screen.getByText("connecting to hermes", { exact: false })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "Signal terminal ready" }));
+
+    expect(screen.queryByTestId("connecting-panel")).toBeNull();
   });
 });

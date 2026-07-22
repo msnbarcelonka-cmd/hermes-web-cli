@@ -278,14 +278,14 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
         open={openRequested && Boolean(listing)}
         onOpenChange={setOpenRequested}
       >
-        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-2xl">
-          <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogContent className="gap-0 overflow-hidden border border-border bg-popover p-0 shadow-2xl shadow-black/35 sm:max-w-2xl [&>button]:top-3 [&>button]:right-3 [&>button]:size-9">
+          <DialogHeader className="border-b border-border bg-muted/20 px-6 py-5">
             <div className="flex items-start gap-3">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
                 <ServerIcon className="size-4" />
               </div>
               <div className="min-w-0 space-y-1">
-                <DialogTitle>Choose project location</DialogTitle>
+                <DialogTitle className="tracking-tight">Choose project location</DialogTitle>
                 <DialogDescription>
                   Select a directory on this server for your workspace.
                 </DialogDescription>
@@ -293,7 +293,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
             </div>
           </DialogHeader>
 
-          <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+          <div className="flex items-center gap-2 border-b border-border bg-background/25 px-4 py-2">
             <Button
               type="button"
               variant="ghost"
@@ -400,7 +400,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
                       data-directory-path={directory.path}
                       aria-label={`Open ${directory.name}`}
                       onClick={() => void loadDirectory(directory.path)}
-                      className="group flex h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                      className="group flex h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                     >
                       <FolderIcon className="size-4 shrink-0 text-sidebar-primary" />
                       <span className="min-w-0 flex-1 truncate">{directory.name}</span>
@@ -420,10 +420,15 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
             </div>
           </ScrollArea>
 
-          <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
-              {listing?.current || BROWSE_ROOT}
-            </p>
+          <div className="flex items-center gap-4 border-t border-border bg-muted/20 px-6 py-4">
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground/60">
+                Selected folder
+              </p>
+              <p className="mt-1 truncate font-mono text-xs text-foreground/75">
+                {listing?.current || BROWSE_ROOT}
+              </p>
+            </div>
             <div className="flex shrink-0 gap-2">
               <Button
                 type="button"
@@ -439,6 +444,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
               </Button>
               <Button
                 type="button"
+                className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/85"
                 disabled={!listing || loading || Boolean(error)}
                 onClick={selectCurrent}
               >

@@ -89,13 +89,28 @@ function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
                 aria-label={hasItems ? `Toggle ${config.section}` : config.section}
                 tooltip={config.section}
               >
-                <Icon />
-                <span>{config.section}</span>
+                <Icon className="text-sidebar-foreground/45" />
+                <span className="font-mono text-[11px] font-medium tracking-[0.12em] uppercase text-sidebar-foreground/60">
+                  {config.section}
+                </span>
                 {hasItems && (
-                  <ChevronRightIcon className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto font-mono text-[10px] tabular-nums text-sidebar-foreground/35 group-data-[collapsible=icon]:hidden"
+                  >
+                    {items.length}
+                  </span>
+                )}
+                {hasItems && (
+                  <ChevronRightIcon className="transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                 )}
               </SidebarMenuButton>
             </CollapsibleTrigger>
+            {!hasItems && (
+              <div className="pt-0.5 pr-2 pb-1 pl-8 font-mono text-[10px] tracking-wide text-sidebar-foreground/30 select-none group-data-[collapsible=icon]:hidden">
+                none yet
+              </div>
+            )}
             {hasItems && (
               <CollapsibleContent>
                 <SidebarMenuSub className="group-data-[collapsible=icon]:mx-0! group-data-[collapsible=icon]:flex! group-data-[collapsible=icon]:translate-x-0 group-data-[collapsible=icon]:px-0!">
@@ -106,17 +121,18 @@ function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
                         className="group-data-[collapsible=icon]:flex! group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:translate-x-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
                       >
                         <button type="button" aria-label={item.name}>
-                          <span className="group-data-[collapsible=icon]:hidden">
+                          <span className="truncate group-data-[collapsible=icon]:hidden">
                             {item.name}
                           </span>
-                          <span className="hidden uppercase group-data-[collapsible=icon]:inline">
+                          <span className="hidden font-mono text-xs uppercase group-data-[collapsible=icon]:inline">
                             {item.name.charAt(0)}
                           </span>
                         </button>
                       </SidebarMenuSubButton>
                       <SidebarMenuAction
+                        showOnHover
                         aria-label={`Delete ${item.name}`}
-                        className="top-1"
+                        className="top-1 text-sidebar-foreground/50 hover:text-sidebar-foreground"
                         onClick={() => onDelete(item.id)}
                       >
                         <XIcon />
@@ -165,11 +181,15 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="gap-3">
         <div className="flex h-8 items-center gap-2">
           <SidebarTrigger className="size-8 shrink-0" />
-          <span className="font-minecraft truncate text-base leading-none group-data-[collapsible=icon]:hidden">
+          <span className="font-minecraft flex items-center gap-1.5 truncate text-base leading-none tracking-wide group-data-[collapsible=icon]:hidden">
             Mist
+            <span
+              aria-hidden="true"
+              className="animate-cursor-blink inline-block h-3.5 w-[7px] bg-sidebar-primary"
+            />
           </span>
         </div>
 
@@ -214,6 +234,7 @@ export function AppSidebar({
           />
         ))}
       </SidebarContent>
+
 
       <Dialog
         open={createType !== null}

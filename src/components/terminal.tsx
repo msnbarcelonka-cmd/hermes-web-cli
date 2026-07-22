@@ -9,18 +9,20 @@ import "@xterm/xterm/css/xterm.css";
 const SGR_MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/;
 const RESIZE_DEBOUNCE_MS = 60;
 
-export function Terminal() {
+export function Terminal({ onReady }: { onReady?: () => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
+    let ready = false;
+    let readyDelay: ReturnType<typeof setTimeout> | undefined;
     const term = new XTerm({
       allowProposedApi: true,
       cursorBlink: true,
       fontFamily:
-        "'JetBrains Mono', 'Cascadia Mono', 'Fira Code', 'MesloLGS NF', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace",
+        "'Geist Mono Variable', 'JetBrains Mono', 'Cascadia Mono', 'Fira Code', Menlo, Consolas, monospace",
       fontSize: 14,
       lineHeight: 1.15,
       fontWeight: "400",
@@ -30,11 +32,11 @@ export function Terminal() {
       rightClickSelectsWord: true,
       scrollback: 5000,
       theme: {
-        background: "#000000",
+        background: "#0b0a08",
         foreground: "#f0e6d2",
         cursor: "#f0e6d2",
-        cursorAccent: "#000000",
-        selectionBackground: "#f0e6d244",
+        cursorAccent: "#0b0a08",
+        selectionBackground: "#5f93b855",
       },
     });
     const fit = new FitAddon();
@@ -165,8 +167,16 @@ export function Terminal() {
       requestAnimationFrame(() => requestAnimationFrame(fitTerminal));
       term.focus();
     };
-    socket.onmessage = ({ data }) =>
+    socket.onmessage = ({ data }) => {
       term.write(typeof data === "string" ? data : new Uint8Array(data));
+      clearTimeout(readyDelay);
+      readyDelay = setTimeout(() => {
+        if (!ready) {
+          ready = true;
+          requestAnimationFrame(() => onReady?.());
+        }
+      }, 300);
+    };
     socket.onclose = () => term.write("\r\n\x1b[31m[disconnected]\x1b[0m");
 
     return () => {
@@ -175,12 +185,13 @@ export function Terminal() {
       window.visualViewport?.removeEventListener("resize", scheduleDebouncedFit);
       cancelAnimationFrame(frame);
       clearTimeout(debounce);
+      clearTimeout(readyDelay);
       dataDisposable.dispose();
       resizeDisposable.dispose();
       socket.close();
       term.dispose();
     };
-  }, []);
+  }, [onReady]);
 
-  return <div ref={hostRef} className="absolute inset-0" />;
+  return <div ref={hostRef} className="absolute inset-0 px-3 py-2.5" />;
 }

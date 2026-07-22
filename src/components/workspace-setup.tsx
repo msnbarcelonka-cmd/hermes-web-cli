@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 
 import { DirectoryPicker } from "@/components/directory-picker";
-import { AnimatedCreateButton } from "@/components/ui/animated-create-button";
 import { BackgroundImageTexture } from "@/components/ui/background-image-texture";
+import { AnimatedCreateButton } from "@/components/ui/animated-create-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -22,15 +22,29 @@ const layouts = [
 
 type LayoutCount = (typeof layouts)[number]["count"];
 
-function LayoutIcon({ columns, count }: { columns: number; count: number }) {
+function LayoutIcon({
+  columns,
+  rows,
+  count,
+}: {
+  columns: number;
+  rows: number;
+  count: number;
+}) {
   return (
     <span
       aria-hidden="true"
-      className="grid gap-1"
-      style={{ gridTemplateColumns: `repeat(${columns}, 0.375rem)` }}
+      className="grid h-7 w-12 gap-[3px]"
+      style={{
+        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gridTemplateRows: `repeat(${rows}, 1fr)`,
+      }}
     >
       {Array.from({ length: count }, (_, index) => (
-        <span key={index} className="size-1.5 rounded-[2px] bg-current" />
+        <span
+          key={index}
+          className="rounded-[2px] bg-current opacity-60 transition-opacity duration-150 group-hover/tile:opacity-80 group-data-[state=on]/tile:opacity-100"
+        />
       ))}
     </span>
   );
@@ -68,67 +82,83 @@ export function WorkspaceSetup({
   return (
     <BackgroundImageTexture
       opacity={0.1}
-      className="size-full overflow-auto bg-sidebar text-sidebar-foreground"
+      className="size-full overflow-auto bg-background text-foreground"
     >
-      <main className="mx-auto min-h-full w-full max-w-5xl px-6 py-10 sm:px-10 sm:py-14 lg:px-14">
-        <form onSubmit={submit}>
-          <h1 className="text-center text-2xl font-semibold tracking-tight sm:text-3xl">
-            Set up your{" "}
-            <span
-              data-workspace-highlight="true"
-              className="animate-work-gradient ml-1 inline-block font-minecraft"
-            >
-              workspace
-            </span>
-          </h1>
+      <main className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-center px-6 py-12 sm:px-8">
+        <form
+          onSubmit={submit}
+          className="animate-in fade-in slide-in-from-bottom-2 duration-500 motion-reduce:animate-none"
+        >
+          <header>
+            <p className="flex items-center gap-2 font-mono text-[11px] tracking-[0.18em] uppercase text-muted-foreground">
+              <span
+                aria-hidden="true"
+                className="inline-block size-1.5 bg-sidebar-primary"
+              />
+              new workspace
+            </p>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+              Set up your{" "}
+              <span
+                data-workspace-highlight="true"
+                className="animate-work-gradient ml-1 font-minecraft text-[0.92em]"
+              >
+                workspace
+              </span>
+            </h1>
 
-          <div className="mx-auto mt-8 grid max-w-md gap-2">
-            <Label htmlFor="workspace-name">Workspace name</Label>
-            <Input
-              id="workspace-name"
-              autoFocus
-              autoComplete="off"
-              aria-invalid={Boolean(nameError)}
-              maxLength={64}
-              placeholder="My workspace"
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setNameError("");
-              }}
-            />
-            {nameError && (
-              <p className="text-xs text-destructive">{nameError}</p>
-            )}
+          </header>
 
-            <div className="mt-4 grid gap-2">
+          <div className="mt-10 grid gap-6">
+            <div className="grid gap-2.5">
+              <Label htmlFor="workspace-name">Workspace name</Label>
+              <Input
+                id="workspace-name"
+                autoFocus
+                autoComplete="off"
+                aria-invalid={Boolean(nameError)}
+                maxLength={64}
+                placeholder="My workspace"
+                value={name}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setNameError("");
+                }}
+              />
+              {nameError && (
+                <p className="text-xs text-destructive">{nameError}</p>
+              )}
+            </div>
+
+            <div className="grid gap-2.5">
               <Label htmlFor="project-location">Project location</Label>
               <DirectoryPicker
                 value={projectPath}
                 onChange={setProjectPath}
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground/80">
                 Choose an existing server folder for this workspace.
               </p>
             </div>
           </div>
 
           <section className="mt-10" aria-labelledby="terminal-count-heading">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
-              <h2 id="terminal-count-heading" className="text-sm font-semibold">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
+              <h2
+                id="terminal-count-heading"
+                className="font-mono text-[11px] font-medium tracking-[0.14em] uppercase text-muted-foreground"
+              >
                 How many terminals?
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Tap a tile to choose a layout
-              </p>
-              <div className="ml-auto flex items-center gap-2 text-xs">
-                <span className="rounded-md bg-sidebar-primary px-2 py-1 font-medium text-sidebar-primary-foreground">
+              <p className="ml-auto font-mono text-[11px] tabular-nums text-muted-foreground">
+                <span className="text-foreground">
                   {selected.count} terminals
                 </span>
-                <span className="text-muted-foreground">
+                <span className="mx-1.5 text-muted-foreground/50">·</span>
+                <span>
                   {selected.columns}×{selected.rows} grid
                 </span>
-              </div>
+              </p>
             </div>
 
             <ToggleGroup
@@ -145,21 +175,24 @@ export function WorkspaceSetup({
                   key={layout.count}
                   value={String(layout.count)}
                   aria-label={`${layout.count} terminals`}
-                  className="h-20 min-w-0 flex-col gap-3 rounded-lg border border-sidebar-border bg-sidebar px-0 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:border-sidebar-ring focus-visible:ring-sidebar-ring/50 data-[state=on]:border-sidebar-primary data-[state=on]:bg-sidebar-primary data-[state=on]:text-sidebar-primary-foreground"
+                  className="group/tile h-[4.5rem] min-w-0 flex-col gap-2.5 rounded-lg border border-border bg-transparent px-0 text-muted-foreground transition-colors duration-150 hover:border-foreground/25 hover:bg-foreground/[0.04] hover:text-foreground focus-visible:border-sidebar-ring focus-visible:ring-sidebar-ring/40 data-[state=on]:border-sidebar-primary data-[state=on]:bg-sidebar-primary/10 data-[state=on]:text-sidebar-primary"
                 >
-                  <LayoutIcon columns={layout.columns} count={layout.count} />
-                  <span className="text-xs font-semibold">{layout.count}</span>
+                  <LayoutIcon
+                    columns={layout.columns}
+                    rows={layout.rows}
+                    count={layout.count}
+                  />
+                  <span className="font-mono text-[11px] font-medium tabular-nums">
+                    {layout.count}
+                  </span>
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
           </section>
 
-          <div className="mt-10 flex justify-center">
-            <AnimatedCreateButton
-              type="submit"
-              aria-label="Create workspace"
-            >
-              Create
+          <div className="mt-12">
+            <AnimatedCreateButton type="submit" aria-label="Create workspace" className="w-full">
+              Create workspace
             </AnimatedCreateButton>
           </div>
         </form>
