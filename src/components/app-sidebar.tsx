@@ -61,7 +61,7 @@ const entityTypes = {
 
 export type EntityType = keyof typeof entityTypes;
 export type Entity = {
-  id: number;
+  id: string;
   name: string;
   type: EntityType;
   projectPath?: string;
@@ -71,10 +71,12 @@ export type Entity = {
 type SidebarSectionProps = {
   type: EntityType;
   items: Entity[];
-  onDelete: (id: number) => void;
+  activeId?: string;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
 };
 
-function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
+function SidebarSection({ type, items, activeId, onSelect, onDelete }: SidebarSectionProps) {
   const config = entityTypes[type];
   const Icon = config.icon;
   const hasItems = items.length > 0;
@@ -118,9 +120,10 @@ function SidebarSection({ type, items, onDelete }: SidebarSectionProps) {
                     <SidebarMenuSubItem key={item.id}>
                       <SidebarMenuSubButton
                         asChild
+                        isActive={item.id === activeId}
                         className="group-data-[collapsible=icon]:flex! group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:translate-x-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
                       >
-                        <button type="button" aria-label={item.name}>
+                        <button type="button" aria-label={item.name} onClick={() => onSelect(item.id)}>
                           <span className="truncate group-data-[collapsible=icon]:hidden">
                             {item.name}
                           </span>
@@ -153,12 +156,16 @@ export function AppSidebar({
   entities,
   onWorkspaceSetup,
   onCreateEntity,
+  activeEntityId,
+  onSelectEntity,
   onDeleteEntity,
 }: {
   entities: Entity[];
   onWorkspaceSetup: () => void;
   onCreateEntity: (name: string, type: EntityType) => void;
-  onDeleteEntity: (id: number) => void;
+  activeEntityId?: string;
+  onSelectEntity: (id: string) => void;
+  onDeleteEntity: (id: string) => void;
 }) {
   const [createType, setCreateType] = useState<EntityType | null>(null);
   const [name, setName] = useState("");
@@ -226,6 +233,8 @@ export function AppSidebar({
             key={type}
             type={type}
             items={entities.filter((entity) => entity.type === type)}
+            activeId={activeEntityId}
+            onSelect={onSelectEntity}
             onDelete={onDeleteEntity}
           />
         ))}

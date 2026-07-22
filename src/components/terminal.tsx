@@ -9,7 +9,15 @@ import "@xterm/xterm/css/xterm.css";
 const SGR_MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/;
 const RESIZE_DEBOUNCE_MS = 60;
 
-export function Terminal({ onReady }: { onReady?: () => void }) {
+export function Terminal({
+  workspaceId,
+  terminalIndex,
+  onReady,
+}: {
+  workspaceId: string;
+  terminalIndex: number;
+  onReady?: () => void;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -91,7 +99,7 @@ export function Terminal({ onReady }: { onReady?: () => void }) {
     });
 
     const socket = new WebSocket(
-      `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}`,
+      `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/workspaces/${encodeURIComponent(workspaceId)}/terminals/${terminalIndex}`,
     );
     socket.binaryType = "arraybuffer";
 
@@ -209,7 +217,7 @@ export function Terminal({ onReady }: { onReady?: () => void }) {
       socket.close();
       term.dispose();
     };
-  }, [onReady]);
+  }, [onReady, terminalIndex, workspaceId]);
 
   return <div ref={hostRef} className="absolute inset-0 px-3 py-2.5" />;
 }

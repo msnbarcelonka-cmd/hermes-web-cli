@@ -32,7 +32,7 @@ function SidebarHarness() {
   const createEntity = (name: string, type: EntityType) => {
     setEntities((current) => [
       ...current,
-      { id: ++nextId.current, name, type },
+      { id: String(++nextId.current), name, type },
     ]);
   };
 
@@ -41,6 +41,7 @@ function SidebarHarness() {
       entities={entities}
       onWorkspaceSetup={() => createEntity(requestedWorkspaceName, "workspace")}
       onCreateEntity={createEntity}
+      onSelectEntity={() => undefined}
       onDeleteEntity={(id) =>
         setEntities((current) => current.filter((entity) => entity.id !== id))
       }

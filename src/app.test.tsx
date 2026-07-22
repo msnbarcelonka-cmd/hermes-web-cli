@@ -1,18 +1,26 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "@/app";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => false }));
 vi.mock("@/components/terminal", () => ({
-  Terminal: ({ onReady }: { onReady?: () => void }) => (
-    <div data-testid="terminal">
-      Terminal
-      <button type="button" onClick={onReady}>Signal terminal ready</button>
+  Terminal: ({
+    workspaceId,
+    terminalIndex,
+    onReady,
+  }: {
+    workspaceId: string;
+    terminalIndex: number;
+    onReady?: () => void;
+  }) => (
+    <div data-testid="terminal" data-workspace={workspaceId} data-index={terminalIndex}>
+      Terminal {terminalIndex}
+      <button type="button" onClick={onReady}>Signal terminal {terminalIndex} ready</button>
     </div>
   ),
 }));
@@ -25,6 +33,29 @@ class ResizeObserverMock {
 
 vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 
+const alpha = {
+  id: "alpha-id",
+  name: "Alpha",
+  projectPath: "/root/alpha",
+  terminalCount: 4 as const,
+  createdAt: "2026-07-22T00:00:00.000Z",
+  updatedAt: "2026-07-22T00:00:00.000Z",
+};
+
+const rootListing = {
+  root: "/root",
+  current: "/root",
+  parent: "/root",
+  directories: [],
+};
+
+function response(body: unknown, status = 200) {
+  return Promise.resolve(new Response(status === 204 ? null : JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  }));
+}
+
 function renderApp() {
   return render(
     <TooltipProvider>
@@ -33,44 +64,65 @@ function renderApp() {
   );
 }
 
-describe("App workspace setup flow", () => {
-  afterEach(cleanup);
-
-  it("moves workspace creation into the setup screen", async () => {
-    const user = userEvent.setup();
-    renderApp();
-
-    expect(await screen.findByTestId("terminal")).toBeTruthy();
-    await user.click(screen.getByRole("button", { name: "Create" }));
-    await user.click(screen.getByRole("menuitem", { name: "Workspace" }));
-
-    expect(await screen.findByRole("heading", { name: "Set up your workspace" })).toBeTruthy();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByTestId("terminal")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Alpha" })).toBeNull();
-
-    const name = screen.getByLabelText("Workspace name");
-    const create = screen.getByRole("button", { name: "Create workspace" });
-    expect(create.hasAttribute("disabled")).toBe(false);
-
-    await user.click(create);
-    expect(screen.queryByRole("button", { name: "Alpha" })).toBeNull();
-
-    await user.type(name, "  Alpha  ");
-    await user.click(create);
-
-    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+describe("App persistent workspaces", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.stubGlobal("fetch", vi.fn());
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
   });
 
-  it("covers the terminal until Hermes has rendered its initial output", async () => {
-    const user = userEvent.setup();
+  it("restores a saved workspace into an independent terminal grid", async () => {
+    vi.mocked(fetch).mockImplementation((input) =>
+      response(String(input).startsWith("/api/directories") ? rootListing : [alpha]),
+    );
     renderApp();
 
-    expect(await screen.findByTestId("connecting-panel")).toBeTruthy();
-    expect(screen.getByText("connecting to hermes", { exact: false })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(await screen.findAllByTestId("terminal")).toHaveLength(4);
+    expect(screen.getAllByTestId("connecting-panel")).toHaveLength(4);
 
-    await user.click(screen.getByRole("button", { name: "Signal terminal ready" }));
+    await userEvent.setup().click(screen.getByRole("button", { name: "Signal terminal 0 ready" }));
+    expect(screen.getAllByTestId("connecting-panel")).toHaveLength(3);
+  });
 
-    expect(screen.queryByTestId("connecting-panel")).toBeNull();
+  it("creates a workspace through the server and selects it", async () => {
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      if (String(input).startsWith("/api/directories")) return response(rootListing);
+      if (init?.method === "POST") return response(alpha, 201);
+      return response([]);
+    });
+    renderApp();
+
+    expect(await screen.findByRole("heading", { name: "Set up your workspace" })).toBeTruthy();
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText("Workspace name"), "Alpha");
+    await user.click(screen.getByRole("radio", { name: "4 terminals" }));
+    await user.click(screen.getByRole("button", { name: "Create workspace" }));
+
+    await waitFor(() => expect(screen.getAllByTestId("terminal")).toHaveLength(4));
+    expect(screen.getByRole("button", { name: "Alpha" })).toBeTruthy();
+    expect(fetch).toHaveBeenLastCalledWith(
+      "/api/workspaces",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("deletes the active workspace through the server", async () => {
+    vi.mocked(fetch).mockImplementation((input, init) => {
+      if (String(input).startsWith("/api/directories")) return response(rootListing);
+      if (init?.method === "DELETE") return response(null, 204);
+      return response([alpha]);
+    });
+    renderApp();
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Delete Alpha" }));
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Alpha" })).toBeNull());
+    expect(screen.getByRole("heading", { name: "Set up your workspace" })).toBeTruthy();
+    expect(fetch).toHaveBeenCalledWith("/api/workspaces/alpha-id", { method: "DELETE" });
   });
 });

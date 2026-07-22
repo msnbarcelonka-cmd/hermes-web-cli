@@ -5,6 +5,7 @@ import { BackgroundImageTexture } from "@/components/ui/background-image-texture
 import { AnimatedCreateButton } from "@/components/ui/animated-create-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { TerminalCount } from "@/lib/workspace-layout";
 import {
   ToggleGroup,
   ToggleGroupItem,
@@ -20,7 +21,7 @@ const layouts = [
   { count: 12, columns: 4, rows: 3 },
 ] as const;
 
-type LayoutCount = (typeof layouts)[number]["count"];
+type LayoutCount = TerminalCount;
 
 function LayoutIcon({
   columns,
@@ -52,12 +53,16 @@ function LayoutIcon({
 
 export function WorkspaceSetup({
   onCreate,
+  isSubmitting = false,
+  error = "",
 }: {
   onCreate?: (
     name: string,
     terminalCount: LayoutCount,
     projectPath: string,
-  ) => void;
+  ) => void | Promise<void>;
+  isSubmitting?: boolean;
+  error?: string;
 }) {
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState("");
@@ -191,8 +196,14 @@ export function WorkspaceSetup({
           </section>
 
           <div className="mt-12">
-            <AnimatedCreateButton type="submit" aria-label="Create workspace" className="w-full">
-              Create workspace
+            {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
+            <AnimatedCreateButton
+              type="submit"
+              aria-label="Create workspace"
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Creating workspace…" : "Create workspace"}
             </AnimatedCreateButton>
           </div>
         </form>

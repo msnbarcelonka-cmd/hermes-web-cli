@@ -1,127 +1,228 @@
 import express from "express";
 import { WebSocketServer } from "ws";
 import { spawn as ptySpawn } from "node-pty";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { createServer } from "node:http";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, join, resolve } from "node:path";
+
 import { createDirectory, listDirectories } from "./directory-browser.js";
+import { createTerminalSessionManager } from "./terminal-session-manager.js";
+import { createWorkspaceStore } from "./workspace-store.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = process.env.PORT || 3000;
-const HERMES = process.env.HERMES_BIN || "hermes";
-const HERMES_ARGS = process.env.HERMES_ARGS ? JSON.parse(process.env.HERMES_ARGS) : ["--tui"];
-const MIST_BROWSE_ROOT = process.env.MIST_BROWSE_ROOT || "/root";
 
-const app = express();
-app.use(express.json({ limit: "4kb" }));
+function errorStatus(error) {
+  if (error instanceof RangeError) return 403;
+  if (error?.code === "ENOENT") return 404;
+  if (error instanceof TypeError) return 400;
+  return 500;
+}
 
-app.get("/api/directories", async (req, res) => {
-  if (typeof req.query.path !== "string") {
-    res.status(400).json({ error: "An absolute directory path is required" });
-    return;
-  }
+function sendError(res, error, fallback) {
+  const status = errorStatus(error);
+  if (status === 500) console.error(fallback, error);
+  res.status(status).json({ error: status === 500 ? fallback : error.message });
+}
 
-  try {
-    res.json(await listDirectories(req.query.path, MIST_BROWSE_ROOT));
-  } catch (error) {
-    if (error instanceof RangeError) {
-      res.status(403).json({ error: error.message });
+export function createMistServer({
+  store,
+  terminalSessions,
+  browseRoot = "/root",
+  distPath = join(__dirname, "dist"),
+} = {}) {
+  if (!store || !terminalSessions) throw new TypeError("Store and terminal sessions are required");
+
+  const app = express();
+  app.use(express.json({ limit: "4kb" }));
+
+  app.get("/api/directories", async (req, res) => {
+    if (typeof req.query.path !== "string") {
+      res.status(400).json({ error: "An absolute directory path is required" });
+      return;
+    }
+    try {
+      res.json(await listDirectories(req.query.path, browseRoot));
+    } catch (error) {
+      sendError(res, error, "Unable to read directory");
+    }
+  });
+
+  app.post("/api/directories", async (req, res) => {
+    const { parent, name } = req.body ?? {};
+    if (typeof parent !== "string" || typeof name !== "string") {
+      res.status(400).json({ error: "Parent path and folder name are required" });
+      return;
+    }
+    try {
+      res.status(201).json({ path: await createDirectory(parent, name, browseRoot) });
+    } catch (error) {
+      if (error?.code === "EEXIST") {
+        res.status(409).json({ error: "A folder with this name already exists" });
+        return;
+      }
+      sendError(res, error, "Unable to create directory");
+    }
+  });
+
+  app.get("/api/workspaces", async (_req, res) => {
+    try {
+      res.json(await store.listWorkspaces());
+    } catch (error) {
+      sendError(res, error, "Unable to list workspaces");
+    }
+  });
+
+  app.post("/api/workspaces", async (req, res) => {
+    let workspace;
+    try {
+      workspace = await store.createWorkspace(req.body);
+      terminalSessions.ensureWorkspace(workspace);
+      res.status(201).json(workspace);
+    } catch (error) {
+      if (workspace) {
+        terminalSessions.stopWorkspace(workspace.id);
+        await store.deleteWorkspace(workspace.id).catch(() => undefined);
+      }
+      sendError(res, error, "Unable to create workspace");
+    }
+  });
+
+  app.delete("/api/workspaces/:id", async (req, res) => {
+    try {
+      if (!(await store.deleteWorkspace(req.params.id))) {
+        res.status(404).json({ error: "Workspace not found" });
+        return;
+      }
+      terminalSessions.stopWorkspace(req.params.id);
+      res.status(204).end();
+    } catch (error) {
+      sendError(res, error, "Unable to delete workspace");
+    }
+  });
+
+  app.use(express.static(distPath));
+
+  const httpServer = createServer(app);
+  const wss = new WebSocketServer({ noServer: true });
+  const terminalPath = /^\/ws\/workspaces\/([^/]+)\/terminals\/(\d+)$/;
+
+  httpServer.on("upgrade", async (request, socket, head) => {
+    const url = new URL(request.url, "http://localhost");
+    const match = url.pathname.match(terminalPath);
+    if (!match) {
+      socket.destroy();
       return;
     }
 
-    if (error?.code === "ENOENT") {
-      res.status(404).json({ error: "Directory not found" });
-      return;
+    try {
+      const workspace = await store.getWorkspace(decodeURIComponent(match[1]));
+      const index = Number(match[2]);
+      if (!workspace || !Number.isInteger(index) || index < 0 || index >= workspace.terminalCount) {
+        socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+      const validated = await store.validateWorkspace(workspace);
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        terminalSessions.attach({ workspace: validated, index, ws });
+      });
+    } catch {
+      socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
+      socket.destroy();
     }
+  });
 
-    if (error instanceof TypeError) {
-      res.status(400).json({ error: error.message });
-      return;
-    }
-
-    console.error("Directory browser error:", error);
-    res.status(500).json({ error: "Unable to read directory" });
-  }
-});
-
-app.post("/api/directories", async (req, res) => {
-  const { parent, name } = req.body ?? {};
-  if (typeof parent !== "string" || typeof name !== "string") {
-    res.status(400).json({ error: "Parent path and folder name are required" });
-    return;
-  }
-
-  try {
-    const path = await createDirectory(parent, name, MIST_BROWSE_ROOT);
-    res.status(201).json({ path });
-  } catch (error) {
-    if (error instanceof RangeError) {
-      res.status(403).json({ error: error.message });
-      return;
-    }
-    if (error?.code === "ENOENT") {
-      res.status(404).json({ error: "Parent directory not found" });
-      return;
-    }
-    if (error?.code === "EEXIST") {
-      res.status(409).json({ error: "A folder with this name already exists" });
-      return;
-    }
-    if (error instanceof TypeError) {
-      res.status(400).json({ error: error.message });
-      return;
-    }
-
-    console.error("Directory creation error:", error);
-    res.status(500).json({ error: "Unable to create directory" });
-  }
-});
-
-// Serve built assets from dist/ (Vite output)
-app.use(express.static(join(__dirname, "dist")));
-
-const server = app.listen(PORT, () =>
-  console.log(`Hermes Web CLI → http://localhost:${PORT}`),
-);
-
-const wss = new WebSocketServer({ server });
-
-const RESIZE_RE = /^\x1b\[RESIZE:(\d+);(\d+)\]$/;
-
-wss.on("connection", (ws) => {
-  // Env vars that match the official dashboard's PTY spawn (web_server.py:16676-16689).
-  // HERMES_TUI_DISABLE_MOUSE: disables SGR mouse tracking so xterm.js does native
-  //   browser-side selection (GPU-accelerated, correct selectionBackground color).
-  // HERMES_TUI_INLINE: inline transcript mode for browser embedding.
-  // COLORTERM: forces chalk to emit 24-bit RGB instead of downgrading to xterm 256 palette.
-  // HERMES_TUI_DASHBOARD: marks the TUI as dashboard-embedded.
-  const env = {
-    ...process.env,
-    TERM: "xterm-256color",
-    HERMES_TUI_DISABLE_MOUSE: "1",
-    HERMES_TUI_INLINE: "1",
-    COLORTERM: "truecolor",
-    HERMES_TUI_DASHBOARD: "1",
+  return {
+    app,
+    server: httpServer,
+    listen(port, host) {
+      return new Promise((resolveListen, reject) => {
+        const onError = (error) => {
+          httpServer.off("listening", onListening);
+          reject(error);
+        };
+        const onListening = () => {
+          httpServer.off("error", onError);
+          resolveListen(httpServer);
+        };
+        httpServer.once("error", onError);
+        httpServer.once("listening", onListening);
+        httpServer.listen(port, host);
+      });
+    },
+    close() {
+      terminalSessions.stopAll();
+      for (const client of wss.clients) client.terminate();
+      return new Promise((resolveClose, reject) => {
+        if (!httpServer.listening) {
+          resolveClose();
+          return;
+        }
+        httpServer.close((error) => (error ? reject(error) : resolveClose()));
+      });
+    },
   };
+}
 
-  const term = ptySpawn(HERMES, HERMES_ARGS, {
-    name: "xterm-256color",
-    cols: 100,
-    rows: 30,
-    env,
+function parseAutostartLimit(value) {
+  if (value === undefined || value === "") return Number.POSITIVE_INFINITY;
+  const limit = Number(value);
+  return Number.isInteger(limit) && limit >= 0 ? limit : Number.POSITIVE_INFINITY;
+}
+
+export async function startMistServer() {
+  const port = Number(process.env.PORT || 3000);
+  const browseRoot = process.env.MIST_BROWSE_ROOT || "/root";
+  const databasePath = resolve(
+    process.env.MIST_WORKSPACE_DB || join(__dirname, ".mist", "workspaces.db"),
+  );
+  const store = createWorkspaceStore({ databasePath, browseRoot });
+  const terminalSessions = createTerminalSessionManager({
+    spawn: ptySpawn,
+    hermesBin: process.env.HERMES_BIN || "hermes",
+    hermesArgs: process.env.HERMES_ARGS ? JSON.parse(process.env.HERMES_ARGS) : ["--tui"],
+    detachTtlMs: Number(process.env.MIST_DETACH_TTL_MS || 15 * 60 * 1000),
+    maxAutostartTerminals: parseAutostartLimit(process.env.MIST_MAX_AUTOSTART_TERMINALS),
   });
+  const mist = createMistServer({ store, terminalSessions, browseRoot });
 
-  term.onData((d) => ws.readyState === 1 && ws.send(d));
-
-  ws.on("message", (m) => {
-    const data = m.toString();
-    const match = data.match(RESIZE_RE);
-    if (match) {
-      term.resize(parseInt(match[1]), parseInt(match[2]));
-    } else {
-      term.write(data);
+  if (process.env.MIST_AUTOSTART_WORKSPACES !== "0") {
+    const autostartLimit = parseAutostartLimit(process.env.MIST_MAX_AUTOSTART_TERMINALS);
+    let started = 0;
+    for (const workspace of await store.listWorkspaces()) {
+      try {
+        const valid = await store.validateWorkspace(workspace);
+        const remaining = autostartLimit - started;
+        if (remaining <= 0) break;
+        started += terminalSessions.ensureWorkspace(
+          { ...valid, terminalCount: Math.min(valid.terminalCount, remaining) },
+          { autostart: true },
+        );
+      } catch (error) {
+        console.error(`Unable to autostart workspace ${workspace.name}:`, error.message);
+      }
     }
-  });
+    if (Number.isFinite(autostartLimit)) {
+      console.log(`Mist autostart safety cap active; started ${started} terminal(s)`);
+    }
+  }
 
-  ws.on("close", () => term.kill());
-  ws.on("error", () => term.kill());
-});
+  await mist.listen(port);
+  console.log(`Mist → http://localhost:${port}`);
+
+  const shutdown = async () => {
+    await mist.close();
+    await store.close();
+    process.exit(0);
+  };
+  process.once("SIGINT", shutdown);
+  process.once("SIGTERM", shutdown);
+  return mist;
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+  startMistServer().catch((error) => {
+    console.error("Mist failed to start:", error);
+    process.exit(1);
+  });
+}
