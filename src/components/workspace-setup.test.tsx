@@ -21,7 +21,7 @@ describe("WorkspaceSetup", () => {
     expect(workspace?.className).toContain("ml-");
 
     const name = screen.getByLabelText("Workspace name");
-    expect(name.hasAttribute("required")).toBe(true);
+    expect(name.hasAttribute("required")).toBe(false);
     const terminalHeading = screen.getByText("How many terminals?");
     expect(heading.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(name.compareDocumentPosition(terminalHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -67,5 +67,17 @@ describe("WorkspaceSetup", () => {
       10,
       "/root",
     );
+  });
+
+  it("shows inline validation instead of the browser required tooltip", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn();
+    render(<WorkspaceSetup onCreate={onCreate} />);
+
+    await user.click(screen.getByRole("button", { name: "Create workspace" }));
+
+    expect(screen.getByText("Enter a workspace name.")).toBeTruthy();
+    expect(screen.getByLabelText("Workspace name").getAttribute("aria-invalid")).toBe("true");
+    expect(onCreate).not.toHaveBeenCalled();
   });
 });

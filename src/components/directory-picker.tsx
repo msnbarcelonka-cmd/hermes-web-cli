@@ -62,6 +62,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
   const [submittingFolder, setSubmittingFolder] = useState(false);
   const [pathValue, setPathValue] = useState(value);
   const [pathError, setPathError] = useState("");
+  const [focusPath, setFocusPath] = useState("");
   const listingRef = useRef<DirectoryListing | null>(null);
   const cacheRef = useRef(new Map<string, DirectoryListing>());
   const requestRef = useRef(new Map<string, Promise<DirectoryListing>>());
@@ -116,6 +117,18 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
   }, []);
 
   useEffect(() => setPathValue(value), [value]);
+
+  useEffect(() => {
+    if (!focusPath || !listing?.directories.some(({ path }) => path === focusPath)) {
+      return;
+    }
+
+    const target = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-directory-path]"),
+    ).find((element) => element.dataset.directoryPath === focusPath);
+    target?.focus();
+    setFocusPath("");
+  }, [focusPath, listing]);
 
   const validatePath = async () => {
     const path = pathValue.trim();
@@ -180,6 +193,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
 
   const createFolder = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    event.stopPropagation();
     if (!listing || !folderName.trim()) return;
 
     setSubmittingFolder(true);
@@ -198,6 +212,17 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
 
       setCreatingFolder(false);
       setFolderName("");
+      const createdName = body.path.slice(body.path.lastIndexOf("/") + 1);
+      const parent = {
+        ...listing,
+        directories: [
+          ...listing.directories,
+          { name: createdName, path: body.path },
+        ].sort((left, right) => left.name.localeCompare(right.name)),
+      };
+      cacheRef.current.set(parent.current, parent);
+      listingRef.current = parent;
+      setFocusPath(body.path);
       cacheRef.current.delete(body.path);
       await loadDirectory(body.path);
     } catch (requestError) {
@@ -344,6 +369,13 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
                         }
                       }}
                     />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={!folderName.trim() || submittingFolder}
+                    >
+                      Create folder
+                    </Button>
                   </div>
                   {folderError && (
                     <p className="px-3 text-xs text-destructive">{folderError}</p>
@@ -365,6 +397,7 @@ export function DirectoryPicker({ value, onChange }: DirectoryPickerProps) {
                     <button
                       key={directory.path}
                       type="button"
+                      data-directory-path={directory.path}
                       aria-label={`Open ${directory.name}`}
                       onClick={() => void loadDirectory(directory.path)}
                       className="group flex h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-sm outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring"

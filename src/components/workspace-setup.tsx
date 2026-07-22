@@ -46,6 +46,7 @@ export function WorkspaceSetup({
   ) => void;
 }) {
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState("");
   const [projectPath, setProjectPath] = useState("/root");
   const [selectedCount, setSelectedCount] = useState<LayoutCount>(6);
   const selected = layouts.find((layout) => layout.count === selectedCount)!;
@@ -54,7 +55,12 @@ export function WorkspaceSetup({
     event.preventDefault();
     const trimmedName = name.trim();
     const trimmedPath = projectPath.trim();
-    if (trimmedName && trimmedPath.startsWith("/")) {
+    if (!trimmedName) {
+      setNameError("Enter a workspace name.");
+      return;
+    }
+    setNameError("");
+    if (trimmedPath.startsWith("/")) {
       onCreate?.(trimmedName, selectedCount, trimmedPath);
     }
   };
@@ -82,12 +88,18 @@ export function WorkspaceSetup({
               id="workspace-name"
               autoFocus
               autoComplete="off"
+              aria-invalid={Boolean(nameError)}
               maxLength={64}
-              required
               placeholder="My workspace"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                setNameError("");
+              }}
             />
+            {nameError && (
+              <p className="text-xs text-destructive">{nameError}</p>
+            )}
 
             <div className="mt-4 grid gap-2">
               <Label htmlFor="project-location">Project location</Label>

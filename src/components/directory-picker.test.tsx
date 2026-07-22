@@ -3,6 +3,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { FormEvent } from "react";
 
 import { DirectoryPicker } from "@/components/directory-picker";
 
@@ -154,5 +155,69 @@ describe("DirectoryPicker", () => {
     );
     expect(await screen.findByText("/root/New project")).toBeTruthy();
     expect(screen.queryByLabelText("New folder name")).toBeNull();
+  });
+
+  it("creates a folder by clicking the inline action", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(listing("/root")))
+      .mockResolvedValueOnce(response({ path: "/root/Clicked folder" }))
+      .mockResolvedValueOnce(response(listing("/root/Clicked folder")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DirectoryPicker value="/root" onChange={vi.fn()} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Browse directories" }));
+    await user.click(screen.getByRole("button", { name: "New folder" }));
+    await user.type(screen.getByLabelText("New folder name"), "Clicked folder");
+    await user.click(screen.getByRole("button", { name: "Create folder" }));
+
+    expect(await screen.findByText("/root/Clicked folder")).toBeTruthy();
+  });
+
+  it("returns to the created folder and restores focus", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(listing("/root")))
+      .mockResolvedValueOnce(response({ path: "/root/Focused folder" }))
+      .mockResolvedValueOnce(response(listing("/root/Focused folder")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<DirectoryPicker value="/root" onChange={vi.fn()} />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Browse directories" }));
+    await user.click(screen.getByRole("button", { name: "New folder" }));
+    await user.type(screen.getByLabelText("New folder name"), "Focused folder{Enter}");
+    await screen.findByText("/root/Focused folder");
+    await user.click(screen.getByRole("button", { name: "Go back" }));
+
+    const folder = screen.getByRole("button", { name: "Open Focused folder" });
+    expect(document.activeElement).toBe(folder);
+  });
+
+  it("does not submit the workspace form when folder creation uses Enter", async () => {
+    const user = userEvent.setup();
+    const outerSubmit = vi.fn((event: FormEvent) => event.preventDefault());
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(listing("/root")))
+      .mockResolvedValueOnce(response({ path: "/root/Inner folder" }))
+      .mockResolvedValueOnce(response(listing("/root/Inner folder")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <form onSubmit={outerSubmit}>
+        <DirectoryPicker value="/root" onChange={vi.fn()} />
+      </form>,
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Browse directories" }));
+    await user.click(screen.getByRole("button", { name: "New folder" }));
+    await user.type(screen.getByLabelText("New folder name"), "Inner folder{Enter}");
+    await screen.findByText("/root/Inner folder");
+
+    expect(outerSubmit).not.toHaveBeenCalled();
   });
 });
