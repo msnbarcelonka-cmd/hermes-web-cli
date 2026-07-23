@@ -1,6 +1,7 @@
 import express from "express";
 import { WebSocketServer } from "ws";
 import { spawn as ptySpawn } from "node-pty";
+import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
@@ -164,6 +165,18 @@ export function createMistServer({
   };
 }
 
+const DEFAULT_TUI_DIR = "/usr/local/lib/hermes-agent/ui-tui";
+
+function resolveTuiDir(envValue) {
+  const dir = envValue || DEFAULT_TUI_DIR;
+  try {
+    if (existsSync(join(dir, "dist", "entry.js"))) return dir;
+  } catch {
+    // ignore
+  }
+  return undefined;
+}
+
 function parseAutostartLimit(value) {
   if (value === undefined || value === "") return Number.POSITIVE_INFINITY;
   const limit = Number(value);
@@ -177,12 +190,14 @@ export async function startMistServer() {
     process.env.MIST_WORKSPACE_DB || join(__dirname, ".mist", "workspaces.db"),
   );
   const store = createWorkspaceStore({ databasePath, browseRoot });
+  const tuiDir = resolveTuiDir(process.env.MIST_TUI_DIR || process.env.HERMES_TUI_DIR);
   const terminalSessions = createTerminalSessionManager({
     spawn: ptySpawn,
     hermesBin: process.env.HERMES_BIN || "hermes",
     hermesArgs: process.env.HERMES_ARGS ? JSON.parse(process.env.HERMES_ARGS) : ["--tui"],
     detachTtlMs: Number(process.env.MIST_DETACH_TTL_MS || 15 * 60 * 1000),
     maxAutostartTerminals: parseAutostartLimit(process.env.MIST_MAX_AUTOSTART_TERMINALS),
+    tuiDir,
   });
   const mist = createMistServer({ store, terminalSessions, browseRoot });
 

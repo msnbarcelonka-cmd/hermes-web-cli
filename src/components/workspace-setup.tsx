@@ -1,37 +1,18 @@
 import { useState, type FormEvent } from "react";
 
 import { DirectoryPicker } from "@/components/directory-picker";
-import { BackgroundImageTexture } from "@/components/ui/background-image-texture";
 import { AnimatedCreateButton } from "@/components/ui/animated-create-button";
+import { BackgroundImageTexture } from "@/components/ui/background-image-texture";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { TerminalCount } from "@/lib/workspace-layout";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+  TERMINAL_LAYOUTS,
+  type TerminalCount,
+  type TerminalLayout,
+} from "@/lib/workspace-layout";
 
-const layouts = [
-  { count: 1, columns: 1, rows: 1 },
-  { count: 2, columns: 2, rows: 1 },
-  { count: 4, columns: 2, rows: 2 },
-  { count: 6, columns: 3, rows: 2 },
-  { count: 8, columns: 4, rows: 2 },
-  { count: 10, columns: 5, rows: 2 },
-  { count: 12, columns: 4, rows: 3 },
-] as const;
-
-type LayoutCount = TerminalCount;
-
-function LayoutIcon({
-  columns,
-  rows,
-  count,
-}: {
-  columns: number;
-  rows: number;
-  count: number;
-}) {
+function LayoutIcon({ columns, rows, count }: TerminalLayout) {
   return (
     <span
       aria-hidden="true"
@@ -58,7 +39,7 @@ export function WorkspaceSetup({
 }: {
   onCreate?: (
     name: string,
-    terminalCount: LayoutCount,
+    terminalCount: TerminalCount,
     projectPath: string,
   ) => void | Promise<void>;
   isSubmitting?: boolean;
@@ -67,8 +48,10 @@ export function WorkspaceSetup({
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState("");
   const [projectPath, setProjectPath] = useState("/root");
-  const [selectedCount, setSelectedCount] = useState<LayoutCount>(6);
-  const selected = layouts.find((layout) => layout.count === selectedCount)!;
+  const [selectedCount, setSelectedCount] = useState<TerminalCount>(6);
+  const selected = TERMINAL_LAYOUTS.find(
+    (layout) => layout.count === selectedCount,
+  )!;
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -111,7 +94,6 @@ export function WorkspaceSetup({
                 workspace
               </span>
             </h1>
-
           </header>
 
           <div className="mt-10 grid gap-6">
@@ -137,10 +119,7 @@ export function WorkspaceSetup({
 
             <div className="grid gap-2.5">
               <Label htmlFor="project-location">Project location</Label>
-              <DirectoryPicker
-                value={projectPath}
-                onChange={setProjectPath}
-              />
+              <DirectoryPicker value={projectPath} onChange={setProjectPath} />
               <p className="text-xs text-muted-foreground/80">
                 Choose an existing server folder for this workspace.
               </p>
@@ -170,23 +149,19 @@ export function WorkspaceSetup({
               type="single"
               value={String(selectedCount)}
               onValueChange={(value) => {
-                if (value) setSelectedCount(Number(value) as LayoutCount);
+                if (value) setSelectedCount(Number(value) as TerminalCount);
               }}
               aria-label="Terminal layout"
               className="mt-3 grid w-full grid-cols-4 gap-2 sm:grid-cols-7"
             >
-              {layouts.map((layout) => (
+              {TERMINAL_LAYOUTS.map((layout) => (
                 <ToggleGroupItem
                   key={layout.count}
                   value={String(layout.count)}
                   aria-label={`${layout.count} terminals`}
                   className="group/tile h-[4.5rem] min-w-0 flex-col gap-2.5 rounded-lg border border-border bg-transparent px-0 text-muted-foreground transition-colors duration-150 hover:border-foreground/25 hover:bg-foreground/[0.04] hover:text-foreground focus-visible:border-sidebar-ring focus-visible:ring-sidebar-ring/40 data-[state=on]:border-sidebar-primary data-[state=on]:bg-sidebar-primary/10 data-[state=on]:text-sidebar-primary"
                 >
-                  <LayoutIcon
-                    columns={layout.columns}
-                    rows={layout.rows}
-                    count={layout.count}
-                  />
+                  <LayoutIcon {...layout} />
                   <span className="font-mono text-[11px] font-medium tabular-nums">
                     {layout.count}
                   </span>

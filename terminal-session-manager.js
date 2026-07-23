@@ -16,6 +16,7 @@ export function createTerminalSessionManager({
   detachTtlMs = 15 * 60 * 1000,
   outputBufferBytes = 1024 * 1024,
   maxAutostartTerminals = Number.POSITIVE_INFINITY,
+  tuiDir,
 } = {}) {
   if (typeof spawn !== "function") throw new TypeError("PTY spawn function is required");
 
@@ -43,6 +44,7 @@ export function createTerminalSessionManager({
       HERMES_TUI_INLINE: "1",
       COLORTERM: "truecolor",
       HERMES_TUI_DASHBOARD: "1",
+      ...(tuiDir ? { HERMES_TUI_DIR: tuiDir } : {}),
     };
     const pty = spawn(hermesBin, hermesArgs, {
       name: "xterm-256color",

@@ -13,10 +13,12 @@ export function Terminal({
   workspaceId,
   terminalIndex,
   onReady,
+  onError,
 }: {
   workspaceId: string;
   terminalIndex: number;
   onReady?: () => void;
+  onError?: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
@@ -26,7 +28,6 @@ export function Terminal({
 
     let ready = false;
     let readyDelay: ReturnType<typeof setTimeout> | undefined;
-    let readyFallback: ReturnType<typeof setTimeout> | undefined;
     const term = new XTerm({
       allowProposedApi: true,
       cursorBlink: true,
@@ -175,12 +176,6 @@ export function Terminal({
     socket.onopen = () => {
       requestAnimationFrame(() => requestAnimationFrame(fitTerminal));
       term.focus();
-      readyFallback = setTimeout(() => {
-        if (!ready) {
-          ready = true;
-          requestAnimationFrame(() => onReady?.());
-        }
-      }, 30000);
     };
     socket.onmessage = ({ data }) => {
       term.write(typeof data === "string" ? data : new Uint8Array(data));
@@ -202,7 +197,10 @@ export function Terminal({
         }, 200);
       }
     };
-    socket.onclose = () => term.write("\r\n\x1b[31m[disconnected]\x1b[0m");
+    socket.onclose = () => {
+      term.write("\r\n\x1b[31m[disconnected]\x1b[0m");
+      if (!ready) onError?.();
+    };
 
     return () => {
       resizeObserver.disconnect();
@@ -211,13 +209,12 @@ export function Terminal({
       cancelAnimationFrame(frame);
       clearTimeout(debounce);
       clearTimeout(readyDelay);
-      clearTimeout(readyFallback);
       dataDisposable.dispose();
       resizeDisposable.dispose();
       socket.close();
       term.dispose();
     };
-  }, [onReady, terminalIndex, workspaceId]);
+  }, [onReady, onError, terminalIndex, workspaceId]);
 
   return <div ref={hostRef} className="absolute inset-0 px-3 py-2.5" />;
 }
