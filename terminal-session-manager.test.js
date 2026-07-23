@@ -81,6 +81,8 @@ describe("terminal session manager", () => {
     expect(ptys).toHaveLength(2);
     expect(ptys[0]).not.toBe(ptys[1]);
     expect(ptys[0].options.cwd).toBe("/root/project");
+    expect(ptys[0].options.env.HERMES_CWD).toBe("/root/project");
+    expect(ptys[0].options.env.TERMINAL_CWD).toBe("/root/project");
     expect(ptys[0].options.env.HERMES_TUI_DISABLE_MOUSE).toBe("1");
     manager.stopAll();
   });
