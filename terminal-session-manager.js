@@ -44,6 +44,7 @@ export function createTerminalSessionManager({
       HERMES_TUI_INLINE: "1",
       COLORTERM: "truecolor",
       HERMES_TUI_DASHBOARD: "1",
+      HERMES_CWD: workspace.projectPath,
       ...(tuiDir ? { HERMES_TUI_DIR: tuiDir } : {}),
     };
     const pty = spawn(hermesBin, hermesArgs, {
